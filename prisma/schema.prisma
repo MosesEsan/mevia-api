@@ -6,20 +6,51 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
-model Profile {
-  id     Int     @id @default(autoincrement())
-  bio    String?
-  user   User    @relation(fields: [userId], references: [id])
-  userId Int     @unique
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("DATABASE_URLs")
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  phoneNumber   String   @unique
+  id          Int      @id @default(autoincrement())
+  phoneNumber String   @unique
   username    String   @unique
-  profile Profile?
+  profile     Profile?
+}
+
+model Profile {
+  id         Int      @id @default(autoincrement())
+  bio        String?
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int      @unique
+  userType   UserType @relation(fields: [userTypeId], references: [id])
+  userTypeId Int      @unique
+}
+
+model Question {
+  id      Int    @id @default(autoincrement())
+  text    String
+  time    Int
+  choices String @db.Text
+  answer  String
+}
+
+model UserType {
+  id       Int       @id @default(autoincrement())
+  name     String
+  minGames Int
+  Profile  Profile[]
+}
+
+model UserPoints {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  source    Source   @default(REGISTRATION)
+  points    Int
+}
+
+enum Source {
+  REGISTRATION
+  GAME
+  DAILY_REWARD
 }
