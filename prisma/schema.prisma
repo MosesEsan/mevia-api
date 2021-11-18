@@ -12,41 +12,122 @@ datasource db {
 }
 
 model User {
-  id          Int      @id @default(autoincrement())
-  phoneNumber String   @unique
-  username    String   @unique
+  id          Int          @id @default(autoincrement())
+  phoneNumber String       @unique
+  username    String       @unique
+  userType    UserType     @relation(fields: [userTypeId], references: [id])
+  userTypeId  Int
   profile     Profile?
+  Game        Game[]
+  UserPoints  UserPoints[]
 }
 
 model Profile {
   id         Int      @id @default(autoincrement())
   bio        String?
-  user       User     @relation(fields: [userId], references: [id])
-  userId     Int      @unique
+  user       User     @relation(fields: [user_id], references: [id])
+  user_id    Int      @unique
   userType   UserType @relation(fields: [userTypeId], references: [id])
   userTypeId Int      @unique
 }
 
 model Question {
-  id      Int    @id @default(autoincrement())
-  text    String
-  time    Int
-  choices String @db.Text
-  answer  String
+  id             Int            @id @default(autoincrement())
+  text           String
+  time           Int
+  choices        String         @db.Text
+  answer         String
+  questionType   QuestionType   @relation(fields: [questionTypeId], references: [id])
+  questionTypeId Int
+  GameQuestion   GameQuestion[]
+}
+
+model Challenge {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  daily     Boolean  @default(false)
+  startTime DateTime @db.Time(3)
+  endTime   DateTime @db.Time(3)
+}
+
+model Game {
+  id                  Int            @id @default(autoincrement())
+  user                User           @relation(fields: [userId], references: [id])
+  userId              Int
+  challengeIdentifier String
+  timeAvailable       Int?
+  pointsAvailable     Int?
+  pointsObtained      Int?
+  correctAnswers      Int?           @map("correct_answers")
+  wrongAnswers        Int?           @map("wrong_answers")
+  skipped             Int?
+  percent             Float?
+  initiatedAt         DateTime       @default(now())
+  nextGameAt          DateTime?      @db.Time(3)
+  submittedAt         DateTime?
+  gameQuestions       GameQuestion[]
+}
+
+model GameQuestion {
+  id         Int      @id @default(autoincrement())
+  game       Game     @relation(fields: [gameId], references: [id])
+  gameId     Int
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int
+  correct    Boolean?
+  createdAt  DateTime @default(now())
+
+  @@map("game_question")
+}
+
+model Prize {
+  id          Int          @id @default(autoincrement())
+  name        String
+  image       String
+  description String
+  points      Int
+  DailyPrize  DailyPrize[]
+}
+
+model DailyPrize {
+  id        Int      @id @default(autoincrement())
+  Prize     Prize    @relation(fields: [prizeId], references: [id])
+  position  Int
+  prizeId   Int
+  startDate DateTime
+  endDate   DateTime
+
+  @@map("daily_prize")
+}
+
+model QuestionType {
+  id       Int        @id @default(autoincrement())
+  name     String     @unique
+  points   Int
+  question Question[]
+
+  @@map("question_type")
 }
 
 model UserType {
   id       Int       @id @default(autoincrement())
-  name     String
+  name     String    @unique
   minGames Int
   Profile  Profile[]
+
+  User User[]
+  @@map("user_type")
 }
 
 model UserPoints {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  source    Source   @default(REGISTRATION)
-  points    Int
+  id         Int      @id @default(autoincrement())
+  created_at DateTime @default(now())
+  source     Source   @default(REGISTRATION)
+  points     Int
+  user       User     @relation(fields: [user_id], references: [id])
+  user_id    Int
+
+  @@map("user_points")
 }
 
 enum Source {
