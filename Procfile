@@ -1,1 +1,1 @@
-web: npm run src/server
+web: npm run server
