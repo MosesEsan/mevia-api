@@ -1,4 +1,3 @@
-const User = require('../models/user');
 const {PrismaClient} = require('@prisma/client')
 
 const prisma = new PrismaClient()
@@ -6,6 +5,8 @@ const prisma = new PrismaClient()
 const logger = require('../../logger')();
 const {generateJWT} = require('../utils/generateToken');
 const {twilio, VERIFICATION_SID} = require('../config/twilio');
+
+const UserController = require('../controllers/user');
 
 // @route POST api/auth/register
 // @desc Register user and sends a verification code
@@ -16,22 +17,36 @@ exports.register = async (req, res) => {
 
         // // check duplicate phone Number
         const phoneExist = await prisma.user.findUnique({where: {phoneNumber}})
-        if (phoneExist) return res.status(401).json({message: 'The phone number you have entered is already associated with another account.'});
+        if (phoneExist) return res.status(401).json({success: false, error: {message: "The phone number you have entered is already associated with another account."}});
 
         // Make sure this account doesn't already exist
         const userCheck = await prisma.user.findUnique({where: {username}})
-        if (userCheck) return res.status(401).json({message: 'The username you entered is not available.'});
+        if (userCheck) return res.status(401).json({success: false, error: {message: 'The username you entered is not available.'}});
 
         // create  new user
-        const user = await prisma.user.create({data: {...req.body}})
+        const user = await prisma.user.create({data: {...req.body, userTypeId:5}})
 
-        await sendVerificationCode(user, req, res);
+        await addPoints(user, req, res);
 
     } catch (error) {
         console.log(error)
         res.status(500).json({success: false, error})
     }
 };
+
+async function addPoints(user, req, res) {
+    try {
+        await prisma.userPoints.create({data: {
+            user_id: user.id,
+                points: 250
+            }})
+
+        await sendVerificationCode(user, req, res);
+    } catch (error) {
+        await prisma.user.delete({where: {id: user.id}})
+        res.status(500).json({success: false, error: error.message})
+    }
+}
 
 // @route POST api/auth/login
 // @desc Login user and sends a verification code
@@ -69,8 +84,15 @@ exports.verify = async (req, res) => {
         // Verify and save the user
         if (verificationResult.status === 'approved') {
             // Login successful, write token, and send back user
-            const user = await prisma.user.findUnique({where: {phoneNumber}})
-            res.status(200).json({token: generateJWT(), user});
+            let user = await prisma.user.findUnique({
+                where: {phoneNumber},
+                include: {
+                    userType: true,
+                }
+            })
+
+            user = await UserController.get_user_stats(user)
+            res.status(200).json({token: generateJWT(user), user});
         } else {
             res.status(500).json({success: false, message: errMessage})
         }
@@ -91,11 +113,11 @@ exports.resendToken = async (req, res) => {
 
         const user = await User.findOne({phoneNumber});
 
-        if (!user) return res.status(401).json({msg: 'The phone number ' + phoneNumber + ' is not associated with any account. Double-check and try again.'});
+        if (!user) return res.status(401).json({success: false, message: 'The phone number ' + phoneNumber + ' is not associated with any account. Double-check and try again.'});
 
         await sendVerificationCode(user, req, res);
     } catch (error) {
-        res.status(500).json({message: error.message})
+        res.status(500).json({success: false, message: error.message})
     }
 };
 
