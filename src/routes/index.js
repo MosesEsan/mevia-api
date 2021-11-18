@@ -1,5 +1,9 @@
 const auth = require('./auth');
-// const user = require('./user');
+const question = require('./question');
+const game = require('./game');
+const challenge = require('./challenge');
+const user = require('./user');
+const prize = require('./prize');
 
 const authenticate = require('../middlewares/authenticate');
 
@@ -9,5 +13,11 @@ module.exports = app => {
     });
 
     app.use('/api/auth', auth);
-    // app.use('/api/user', authenticate, user);
+    app.use('/api/question', question);
+
+    app.use('/api/game', authenticate, game);
+    app.use('/api/challenge', authenticate, challenge);
+
+    app.use('/api/user', authenticate, user);
+    app.use('/api/prize', authenticate, prize);
 };
