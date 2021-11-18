@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run clean && npm run build-babel",
     "start": "nodemon src/server.js",
     "server": "npm run build && node ./build/server.js"
   },
