@@ -40,7 +40,6 @@ function get_next_game(game) {
     let check = moment()
     let message = `Next Game Starts At ${next_game}`
     let time_left = next_game.valueOf() - check.valueOf();
-console.log("ff")
     return {time_left, message}
 }
 

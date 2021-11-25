@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
     res.status(200).json({message: "You are in the Challenge Endpoint. "});
 });
 
-router.get('/check', [], validate, Challenge.check);
+router.get('/check', [], Challenge.check);
 
 
 module.exports = router;

@@ -18,6 +18,9 @@ exports.index = async function (req, res) {
         start = moment(start).add(1, 'days')
         end = moment(end).add(1, 'days')
 
+
+
+
         const daily_prizes = await prisma.dailyPrize.findMany({
             where: {
                 startDate: new Date(start),

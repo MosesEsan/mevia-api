@@ -3,6 +3,37 @@ const prisma = require('../config/prisma')
 const {GoogleSpreadsheet} = require('google-spreadsheet');
 
 const {QUESTIONS_SPREADSHEET_URL, SPREADSHEET_CREDENTIALS} = require('../config/constants');
+
+//Get random questions
+exports.index = async (req, res) => {
+    try {
+        console.log("moseees")
+        const questions = await prisma.question.findMany()
+        res.set('Access-Control-Expose-Headers', 'X-Total-Count')
+        res.set('X-Total-Count', questions.length)
+        res.status(200).json(questions)
+    } catch (error) {
+        console.log(error)
+        throw error
+    }
+}
+
+// @route POST api/question
+// @desc Add a new question
+// @access Public
+exports.store = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const new_question = {...req.body, userId};
+        const question = await prisma.question.create({data: new_question})
+
+        res.status(200).json({question, message: 'Event added successfully'});
+    } catch (error) {
+        res.status(500).json({message: error.message});
+    }
+};
+
+
 // @route POST api/auth/register
 // @desc Register user and sends a verification code
 // @access Public
@@ -77,6 +108,10 @@ async function addToDatabase(row, levels) {
 
     const new_question = {
         text,
+        choice_one: choice1,
+        choice_two: choice2,
+        choice_three: choice3,
+        choice_four: choice4,
         choices: JSON.stringify([choice1, choice2, choice3, choice4]),
         answer,
         time: parseInt(time),

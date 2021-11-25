@@ -20,6 +20,7 @@ model User {
   profile     Profile?
   Game        Game[]
   UserPoints  UserPoints[]
+  Winner      Winner[]
 }
 
 model Profile {
@@ -35,6 +36,10 @@ model Question {
   id             Int            @id @default(autoincrement())
   text           String
   time           Int
+  choice_one     String?
+  choice_two     String?
+  choice_three   String?
+  choice_four    String?
   choices        String         @db.Text
   answer         String
   questionType   QuestionType   @relation(fields: [questionTypeId], references: [id])
@@ -90,14 +95,40 @@ model Prize {
 }
 
 model DailyPrize {
-  id        Int      @id @default(autoincrement())
-  Prize     Prize    @relation(fields: [prizeId], references: [id])
-  position  Int
-  prizeId   Int
-  startDate DateTime
-  endDate   DateTime
+  id         Int          @id @default(autoincrement())
+  Prize      Prize        @relation(fields: [prizeId], references: [id])
+  position   Int
+  prizeId    Int
+  startDate  DateTime
+  endDate    DateTime
+  PrizeClaim PrizeClaim[]
 
+  Winner Winner[]
   @@map("daily_prize")
+}
+
+model Winner {
+  id     Int  @id @default(autoincrement())
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  DailyPrize   DailyPrize @relation(fields: [dailyPrizeId], references: [id])
+  dailyPrizeId Int        @unique @map("daily_prize_id")
+
+  createdAt  DateTime     @default(now())
+  PrizeClaim PrizeClaim[]
+}
+
+model PrizeClaim {
+  id           Int        @id @default(autoincrement())
+  Winner       Winner     @relation(fields: [winnerId], references: [id])
+  winnerId     Int        @unique
+  DailyPrize   DailyPrize @relation(fields: [dailyPrizeId], references: [id])
+  dailyPrizeId Int        @map("daily_prize_id")
+  claimed      Boolean    @default(false)
+  sent         Boolean    @default(false)
+  delivered    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
 }
 
 model QuestionType {

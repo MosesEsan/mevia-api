@@ -5,10 +5,13 @@ const Question = require('../controllers/question');
 const validate = require('../middlewares/validate');
 
 const router = express.Router();
+//
+// router.get('/', (req, res) => {
+//     res.status(200).json({message: "You are in the Question Endpoint. "});
+// });
 
-router.get('/', (req, res) => {
-    res.status(200).json({message: "You are in the Question Endpoint. "});
-});
+router.get('/', [
+], validate, Question.index);
 
 router.get('/import', [
 ], validate, Question.import);
