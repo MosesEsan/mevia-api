@@ -4,35 +4,64 @@ const {GoogleSpreadsheet} = require('google-spreadsheet');
 
 const {QUESTIONS_SPREADSHEET_URL, SPREADSHEET_CREDENTIALS} = require('../config/constants');
 
-//Get random questions
+// @route GET api/question
+// @desc Returns all questions
+// @access Public
 exports.index = async (req, res) => {
     try {
-        console.log("moseees")
         const questions = await prisma.question.findMany()
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', questions.length)
         res.status(200).json(questions)
     } catch (error) {
-        console.log(error)
         throw error
     }
 }
 
+//CRUD
+
 // @route POST api/question
 // @desc Add a new question
 // @access Public
-exports.store = async (req, res) => {
+exports.create = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const new_question = {...req.body, userId};
-        const question = await prisma.question.create({data: new_question})
-
-        res.status(200).json({question, message: 'Event added successfully'});
+        const question = await prisma.question.create({data: {...req.body}})
+        res.status(200).json(question)
     } catch (error) {
         res.status(500).json({message: error.message});
     }
 };
 
+// @route GET api/question/{id}
+// @desc Returns a question prize
+// @access Public
+exports.read = async function (req, res) {
+    try {
+        const id = req.params.id;
+
+        let question = await prisma.question.findUnique({where: {id: parseInt(id)}})
+
+        res.status(200).json(question);
+    } catch (error) {
+        res.status(500).json({message: error.message})
+    }
+};
+
+// @route PUT api/question/{id}
+// @desc Update question details
+// @access Public
+exports.update = async function (req, res) {
+    try {
+        const data = req.body;
+        const id = req.params.id;
+
+        const question = await prisma.question.update({where: { id: parseInt(id) }, data})
+        res.status(200).json(question);
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({message: error.message});
+    }
+};
 
 // @route POST api/auth/register
 // @desc Register user and sends a verification code
