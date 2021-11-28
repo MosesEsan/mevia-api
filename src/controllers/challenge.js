@@ -3,6 +3,75 @@ const moment = require('moment')
 const {isGameValid, get_next_game} = require("../utils/isGameValid");
 const {checkGame} = require("../utils/check-game");
 
+// @route GET api/prize
+// @desc Returns all prizes
+// @access Public
+exports.index = async (req, res) => {
+    try {
+        const prizes = await prisma.weeklyChallenge.findMany()
+        res.set('Access-Control-Expose-Headers', 'X-Total-Count')
+        res.set('X-Total-Count', prizes.length)
+        res.status(200).json(prizes)
+    } catch (error) {
+        console.log(error)
+        throw error
+    }
+}
+
+//CRUD
+
+// @route POST api/prize
+// @desc Add a new prize
+// @access Public
+exports.create = async (req, res) => {
+    try {
+        const prize = await prisma.weeklyChallenge.create({data: {...req.body }})
+        res.status(200).json(prize)
+    } catch (error) {
+        res.status(500).json({message: error.message});
+    }
+};
+
+
+// @route GET api/prize/{id}
+// @desc Returns a specific prize
+// @access Public
+exports.read = async function (req, res) {
+    try {
+        const id = req.params.id;
+
+        let prize = await prisma.weeklyChallenge.findUnique({where: {id: parseInt(id)}})
+
+        res.status(200).json(prize);
+    } catch (error) {
+        res.status(500).json({message: error.message})
+    }
+};
+
+// @route PUT api/question/{id}
+// @desc Update question details
+// @access Public
+exports.update = async function (req, res) {
+    try {
+        const data = req.body;
+        const id = req.params.id;
+
+        const question = await prisma.weeklyChallenge.update({where: { id: parseInt(id) }, data})
+        res.status(200).json(question);
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({message: error.message});
+    }
+};
+
+
+
+
+
+
+
+
+
 async function checkChallenges(user_id) {
     try {
         //Get challenges
@@ -94,12 +163,15 @@ async function checkChallenges(user_id) {
         else if (avail) challenge['current'] = true;
         else challenge = {avail, challenge_identifier}
 
+        console.log(user_id)
+        console.log(challenge_identifier)
         //---
 
         if (avail && challenge_identifier !== null) {
             //Check if there hs been any game created for this user for this challenge
             try {
                 const game = await checkGame(challenge_identifier, user_id)
+                console.log(game, "game")
 
                 const {is_valid, has_next_game, next_game_avail, message} = await isGameValid(game);
                 console.log(is_valid, has_next_game, next_game_avail, message)
@@ -139,6 +211,10 @@ exports.check = async (req, res) => {
         const result = await checkChallenges(user_id);
         let {challenge} = result;
         let {avail, challenge_identifier} = challenge;
+
+        console.log("result")
+        console.log(result)
+        console.log("result")
 
         res.status(200).json(result)
     } catch (error) {
