@@ -9,19 +9,26 @@ const prize = require('./prize');
 const leaderboard = require('./leaderboard');
 
 const authenticate = require('../middlewares/authenticate');
+const express = require("express");
 
 module.exports = app => {
     app.get('/', (req, res) => {
         res.status(200).send({ message: "Welcome to the AUTHENTICATION API. Register or Login to test Authentication."});
     });
 
+    /*
+    Serve all files/folders inside of the 'uploads' directory
+    And make them accessible through http://localhost:3000/uploads.
+    */
+    app.use(express.static(__dirname + '/public'));
+    app.use('/uploads', express.static('uploads'));
+
     app.use('/api/home', authenticate, home);
 
     app.use('/api/auth', auth);
     app.use('/api/question', question);
-    app.use('/api/question_types', question_types);
+    app.use('/api/questionTypes', question_types);
 
-    app.use('/api/question-types', question);
     app.use('/api/leaderboard', leaderboard);
 
     app.use('/api/game', authenticate, game);
