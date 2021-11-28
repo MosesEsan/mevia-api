@@ -88,16 +88,16 @@ exports.create = async function (req, res) {
         await store(req, res, challenge)
     }
 
-    //if it has a next game but the next game available is not ready (prev game submitted)
-    else if (challenge.next_game !== null) {
+    //if is valid is true (prev game not submitted, next game in future) (return the the gajme)
+    else if (challenge.current_game !== null) {
         console.log("2")
-        res.status(200).json(result)
+        await read(req, res, challenge.current_game, "Game already exist.")
     }
 
-    //if is valid is true (prev game not submitted, next game in future) (return the the gajme)
-    else if (challenge.current_game === true) {
+    //if it has a next game but the next game available is not ready (prev game submitted)
+    else if (challenge.next_game !== null) {
         console.log("3")
-        await read(req, res, challenge.current_game, "Game already exist.")
+        res.status(200).json(result)
     }
 
     else {
