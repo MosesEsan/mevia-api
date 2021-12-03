@@ -3,8 +3,8 @@ const moment = require('moment')
 const {isGameValid, get_next_game} = require("../utils/isGameValid");
 const {checkGame} = require("../utils/check-game");
 
-// @route GET api/prize
-// @desc Returns all prizes
+// @route GET api/challenge
+// @desc Returns all challenges
 // @access Public
 exports.index = async (req, res) => {
     try {
@@ -20,8 +20,8 @@ exports.index = async (req, res) => {
 
 //CRUD
 
-// @route POST api/prize
-// @desc Add a new prize
+// @route POST api/challenge
+// @desc Add a new challenge
 // @access Public
 exports.create = async (req, res) => {
     try {
@@ -33,8 +33,8 @@ exports.create = async (req, res) => {
 };
 
 
-// @route GET api/prize/{id}
-// @desc Returns a specific prize
+// @route GET api/challenge/{id}
+// @desc Returns a specific challenge
 // @access Public
 exports.read = async function (req, res) {
     try {
@@ -48,8 +48,8 @@ exports.read = async function (req, res) {
     }
 };
 
-// @route PUT api/question/{id}
-// @desc Update question details
+// @route PUT api/challenge/{id}
+// @desc Update challenge details
 // @access Public
 exports.update = async function (req, res) {
     try {
@@ -64,22 +64,58 @@ exports.update = async function (req, res) {
     }
 };
 
+// @route PUT api/challenge/check
+// @desc  checks if a challenge is avaialble
+// @access Public
+exports.check = async function (req, res) {
+    try {
+        const challenge = await checkWeeklyChallenge();
 
 
+        if (challenge && challenge.WeeklyPrize.length > 0){
+            let user_id = req.user.id;
+            const result = await checkChallenges(user_id, challenge);
+
+            console.log("RESPONSE")
+            console.log(result)
+            console.log("RESPONSE")
+            return res.status(200).json(result)
+        }else{
+            res.status(401).json({error: {message: "No Challenges available."}})
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({error})
+    }
+};
 
 
+async function checkWeeklyChallenge() {
+    const today = moment().subtract(1, 'days') ;
+    let start = today.startOf('week').format('YYYY-MM-DD HH:mm');
+    let end = today.endOf('week').format('YYYY-MM-DD HH:mm');
 
+    start = moment(start).add(1, 'days') //the beginning of this week
+    end = moment(end).add(1, 'days') //the end of this week
 
+    return await prisma.weeklyChallenge.findFirst({
+        where: {
+            startDate: new Date(start),
+            endDate: {lte: new Date(end)},
+        },
+        include: {WeeklyPrize: true},
+        orderBy: {createdAt: 'asc'}
+    });
+}
 
 
 async function checkChallenges(user_id) {
     try {
-        //Get challenges
-        const challenges = await prisma.challenge.findMany({where: {daily: true}, orderBy: {startTime: 'asc'}})
+        //Get challenges times
+        const challengeTimes = await prisma.challengeTime.findMany({where: {daily: true}, orderBy: {startTime: 'asc'}})
 
         let avail = false;
         let challenge_no = null;
-        let available_games = null;
         let challenge_description = null;
         let challenge_start_time = null;
         let challenge_end_time = null;
@@ -87,9 +123,13 @@ async function checkChallenges(user_id) {
         let challenge_time_left = null;
         let format = 'hh:mm:ss'
 
-        let next_challenge = null
+        let current_challenge = null
+        let current_challenge_avail = false;
 
-        challenges.forEach((challenge, index) => {
+        let next_challenge = null
+        let next_challenge_avail = false;
+
+        challengeTimes.forEach((challenge, index) => {
             let startTime = new moment(challenge.startTime);
             startTime = startTime.format("HH:mm:ss");
             startTime = moment(startTime, format)
@@ -98,7 +138,6 @@ async function checkChallenges(user_id) {
             endTime = endTime.format("HH:mm:ss");
             endTime = moment(endTime, format)
 
-            // let check = moment();
             let check = moment()
             let month = check.format('M'),
                 day = check.format('D'),
@@ -106,89 +145,92 @@ async function checkChallenges(user_id) {
                 hour = startTime.format('HH'),
                 minutes = startTime.format('mm');
 
-
             if (check.isBetween(startTime, endTime)) {
                 avail = true;
-                challenge_no = `${index + 1}/${challenges.length}`;
-                available_games = 20;
-                // available_games = challenge.availableGames;
-                // challenge_description = challenge.challenge_description;
-                challenge_description = "Take part in daily challenges and be in a chance to win one of the weekly prizes.";
+                current_challenge_avail = true;
+
+                challenge_no = `${index + 1}/${challengeTimes.length}`;
+                challenge_identifier = `${user_id}${year}${month}${day}${hour}${minutes}`
                 challenge_start_time = startTime
                 challenge_end_time = endTime
-
                 challenge_time_left =  endTime.valueOf() - check.valueOf();
-                challenge_identifier = `${user_id}${year}${month}${day}${hour}${minutes}`
-            }else if (check.isBefore(startTime) && next_challenge === null){
-            //    if this challenge is in the future
-                console.log("In the future")
-                console.log(startTime)
-                challenge_time_left =  startTime.valueOf() - check.valueOf();
+                challenge_description = "Take part in daily challenges and be in a chance to win one of the weekly prizes.";
 
-                next_challenge = {
-                    avail:false,
-                    current: false,
-                    next: true,
-                    new_game: false,
-                    current_game: null,
-                    next_game: null,
+                current_challenge = {
+                    challenge_no,
+                    challenge_identifier,
+                    challenge_start_time,
+                    challenge_end_time,
                     challenge_time_left,
-                    challenge_no:`${index + 1}/${challenges.length}`,
+                    challenge_description
+                };
+            }else if (check.isBefore(startTime) && next_challenge === null){
+                //    if this challenge is in the future
+                challenge_time_left =  startTime.valueOf() - check.valueOf();
+                next_challenge_avail = true;
+                next_challenge = {
+                    challenge_no:`${index + 1}/${challengeTimes.length}`,
                     challenge_start_time:startTime,
                     challenge_end_time:endTime,
+                    challenge_time_left,
                     challenge_description:"Take part in daily challenges and be in a chance to win one of the weekly prizes.",
                 }
-                console.log("In the future")
             }
         })
+
+        if (current_challenge !== null) {
+            next_challenge_avail= false;
+            next_challenge= null;
+        }
 
         let challenge = {
             avail,
             current: false,
             next: false,
-            new_game: false,
+
+            current_challenge,
+            current_challenge_avail,
+
+            next_challenge,
+            next_challenge_avail,
+
+            new_game_avail: false,
+            current_game_avail: false,
             current_game: null,
-            next_game: null,
-            challenge_description,
-            challenge_start_time, challenge_end_time,
-            challenge_time_left,
-            challenge_identifier,
-            challenge_no,
-            available_games
+            next_game: null
         };
 
-        console.log("avail", avail)
-        console.log("next_challenge", next_challenge)
-        if (!avail && next_challenge !== null) challenge  = next_challenge;
-        else if (avail) challenge['current'] = true;
-        else challenge = {avail, challenge_identifier}
+        if (avail) challenge['current'] = true;
+        else if (next_challenge_avail) challenge['current'] = false;
+        // else challenge = {avail, challenge_identifier, next_challenge}
 
-        console.log(user_id)
-        console.log(challenge_identifier)
         //---
 
         if (avail && challenge_identifier !== null) {
             //Check if there hs been any game created for this user for this challenge
             try {
                 const game = await checkGame(challenge_identifier, user_id)
-                console.log(game, "game")
+
+
+                console.log("in here")
 
                 const {is_valid, has_next_game, next_game_avail, message} = await isGameValid(game);
                 console.log(is_valid, has_next_game, next_game_avail, message)
 
-
                 //if no game was found or it has a next game and the next game available is ready (prev game submitted) (creates new game)
                 if (game == null || (has_next_game === true && next_game_avail === true)) {
-                    challenge['new_game'] = true
+                    challenge['new_game_avail'] = true
                 }
 
                 // /if it has a next game but the next game available is not ready (prev game submitted)
+                //get the time left foer the next
                 if (has_next_game === true && next_game_avail === false) {
                     challenge['next_game'] = get_next_game(game)
                 }
 
                 //if is valid is true (prev game not submitted, next game in future)
                 else if (is_valid === true) {
+                    challenge['current_game_avail'] = true
                     challenge['current_game'] = game
                 }
 
@@ -199,29 +241,16 @@ async function checkChallenges(user_id) {
             }
         }
 
-        return {success: true, challenge};
+        console.log("====")
+        console.log(challenge)
+        console.log("====")
+
+        return challenge;
     } catch (error) {
         throw error
     }
 }
 
-exports.check = async (req, res) => {
-    try {
-        let user_id = req.user.id;
-        const result = await checkChallenges(user_id);
-        let {challenge} = result;
-        let {avail, challenge_identifier} = challenge;
-
-        console.log("result")
-        console.log(result)
-        console.log("result")
-
-        res.status(200).json(result)
-    } catch (error) {
-        console.log("err")
-        console.log(error)
-        res.status(500).json({success: false, error})
-    }
-};
 
 exports.checkChallenges = checkChallenges;
+exports.checkWeeklyChallenge = checkWeeklyChallenge;

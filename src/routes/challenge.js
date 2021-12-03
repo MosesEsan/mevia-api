@@ -3,6 +3,7 @@ const {check} = require('express-validator');
 
 const Challenge = require('../controllers/challenge');
 const validate = require('../middlewares/validate');
+const WeeklyPrize = require("../controllers/weekly_prize");
 
 const router = express.Router();
 
@@ -19,8 +20,11 @@ router.post('/', [
 //CHECK
 router.get('/check', [], Challenge.check);
 
+//PRIZES
+router.get('/prize',  WeeklyPrize.challenge_prizes);
+
 //SHOW
-// router.get('/:id',  Challenge.read);
+router.get('/:id',  Challenge.read);
 
 //UPDATE
 router.put('/:id', Challenge.update);
