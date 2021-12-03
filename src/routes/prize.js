@@ -3,6 +3,7 @@ const {check} = require('express-validator');
 
 const Prize = require('../controllers/prize');
 const validate = require('../middlewares/validate');
+const WeeklyPrize = require("../controllers/weekly_prize");
 
 const router = express.Router();
 
@@ -15,10 +16,25 @@ router.post('/', [
     check('image').not().isEmpty().withMessage('image is required'),
     check('description').not().isEmpty().withMessage('description is required'),
     check('points').not().isEmpty().withMessage('points is required')
-], validate, Prize.store);
+], validate, Prize.create);
 
-//SHOW
-router.get('/:id',  Prize.show);
+//CLAIM
+router.get('/claim', [
+    check('weekly_prize_id').not().isEmpty().withMessage('Weekly Prize Id is required'),
+    check('fullname').not().isEmpty().withMessage('Name is required'),
+    check('phoneNumber').not().isEmpty().withMessage('Phone Number is required'),
+    check('formattedPhoneNumber').not().isEmpty().withMessage('Phone Number is required'),
+    check('addressLineOne').not().isEmpty().withMessage('Address Line 1 is required'),
+    check('city').not().isEmpty().withMessage('City is required')
+], Prize.claim);
+
+
+
+
+
+
+//READ
+router.get('/:id',  Prize.read);
 
 //UPDATE
 router.put('/:id', Prize.update);
