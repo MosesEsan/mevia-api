@@ -19,11 +19,10 @@ router.post('/', [
 ], validate, Prize.create);
 
 //CLAIM
-router.get('/claim', [
-    check('weekly_prize_id').not().isEmpty().withMessage('Weekly Prize Id is required'),
+router.post('/claim', [
+    check('weeklyPrizeId').not().isEmpty().withMessage('Weekly Prize Id is required'),
     check('fullname').not().isEmpty().withMessage('Name is required'),
     check('phoneNumber').not().isEmpty().withMessage('Phone Number is required'),
-    check('formattedPhoneNumber').not().isEmpty().withMessage('Phone Number is required'),
     check('addressLineOne').not().isEmpty().withMessage('Address Line 1 is required'),
     check('city').not().isEmpty().withMessage('City is required')
 ], Prize.claim);

@@ -105,16 +105,17 @@ exports.update = async function (req, res) {
 exports.claim = async function (req, res) {
     try {
         const user = req.user;
-        let { weekly_prize_id} = req.body;
+        let { weeklyPrizeId } = req.body;
 
-        const claim = await prisma.prizeClaim.findUnique({where: {weekly_prize_id}})
+        const claim = await prisma.prizeClaim.findUnique({where: {weeklyPrizeId}})
         if (claim) return res.status(401).json({success: false, error: {message: `This prize was claimed on the ${claim.dateClaimed}.`}});
 
-        let data = { weekly_prize_id, user_id:user.id, dateClaimed :new Date()}
+        let data = {...req.body, userId:user.id, dateClaimed :new Date()}
 
         let new_claim = await prisma.prizeClaim.create({data})
 
-        res.status(200).json(new_claim);
+        await saveClaim(req, res, new_claim)
+
     } catch (error) {
         res.status(500).json({message: error.message})
     }
@@ -122,6 +123,24 @@ exports.claim = async function (req, res) {
 
 
 
+async function saveClaim(req, res, new_claim) {
+    try {
+        const updatedWeeklyPrize = await prisma.weeklyPrize.update({
+            where: {id: parseInt(new_claim.weeklyPrizeId)},
+            data: {
+                claimed: true,
+                dateClaimed: new_claim.dateClaimed
+            }})
+
+        console.log(updatedWeeklyPrize)
+
+        res.status(200).json({claim: new_claim, message: "You have successfully claimed your prize. \n One of our agents will contact you to confirm and arrange delivery."});
+    } catch (error) {
+        // delete the prizeclaim if it fails to update the weekly prize table
+        await prisma.prizeClaim.delete({where: {id: new_claim.id}})
+        res.status(500).json({error})
+    }
+}
 
 
 
