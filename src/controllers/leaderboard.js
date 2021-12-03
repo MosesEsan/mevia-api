@@ -90,9 +90,9 @@ exports.index = async function (req, res) {
         })
 
         res.status(200).json({success: true, data: {leaderboard, top_leaders}});
-    } catch (e) {
+    } catch (error) {
         logger.error(e);
-        res.status(500).json({success: false, message: e.message})
+        res.status(500).json({error})
     }
 };
 

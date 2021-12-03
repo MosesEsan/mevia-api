@@ -34,9 +34,8 @@ exports.index = async function (req, res) {
         let panels = [rules]
 
         res.status(200).json({success: true, data: {panels}});
-    } catch (e) {
-        logger.error(e);
-        res.status(500).json({success: false, message: e.message})
+    } catch (error) {
+        res.status(500).json({error})
     }
 };
 

@@ -23,10 +23,9 @@ async function isGameValid(game) {
             is_valid = checkStillValid(game)
             has_next_game = !is_valid
             next_game_avail = !is_valid
-        }
-        //if the game has not been submitted and next game time is not available
-        else if (game.submittedAt === null && game.nextGameAt !== null)
+        }else{
             is_valid = true;
+        }
     }
 
     return {has_next_game, next_game_avail, is_valid, time_left, message}
