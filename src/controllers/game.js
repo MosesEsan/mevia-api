@@ -71,85 +71,46 @@ async function saveGameQuestions(req, res, game, questions) {
 //Create
 exports.create = async function (req, res) {
     let user_id = req.user.id;
-    //Before creating a game check if challenge is available
-    let result = await ChallengeController.checkChallenges(user_id)
-    let {challenge} = result;
-    let {avail, challenge_identifier} = challenge;
+    const challenge = await ChallengeController.checkWeeklyChallenge();
 
-    console.log(result)
-    console.log("avail", avail)
-    console.log("challenge_identifier", challenge_identifier)
+    console.log(challenge)
 
+    if (challenge && challenge.WeeklyPrize.length > 0){
+        //Before creating a game check if the available challenge times
+        let result = await ChallengeController.checkChallenges(user_id)
 
-    //if it has a next game and the next game available is ready (prev game submitted)
-    // (creates new game)
-    if (challenge.new_game === true) {
-        console.log("1")
-        await store(req, res, challenge)
+        //if it has a next game and the next game available is ready (prev game submitted)
+        // (creates new game)
+        if (result.new_game_avail === true) {
+            console.log("1")
+            let current_challenge = {...challenge, ...result.current_challenge}
+            await store(req, res, current_challenge)
+        }
+
+        //if is valid is true (prev game not submitted, next game in future) (return the the gajme)
+        else if (result.current_game_avail === true && result.current_game !== null) {
+            console.log("2")
+            await read(req, res, result.current_game, "Game already exist.")
+        }
+
+        //if it has a next game but the next game available is not ready (prev game submitted)
+        else if (result.next_game !== null) {
+            console.log("3")
+            res.status(200).json(result)
+        }
+
+        else {
+            res.status(200).json(result)
+        }
+    }else{
+        res.status(401).json({error: {message: "No Challenges available."}})
     }
-
-    //if is valid is true (prev game not submitted, next game in future) (return the the gajme)
-    else if (challenge.current_game !== null) {
-        console.log("2")
-        await read(req, res, challenge.current_game, "Game already exist.")
-    }
-
-    //if it has a next game but the next game available is not ready (prev game submitted)
-    else if (challenge.next_game !== null) {
-        console.log("3")
-        res.status(200).json(result)
-    }
-
-    else {
-        res.status(200).json(result)
-    }
-
-
-    // if (avail && challenge_identifier !== null) {
-    //     //Check if there hs been any game created for this user for this challenge
-    //     try {
-    //         const game = await checkGame(challenge_identifier, user_id)
-    //         console.log(game)
-    //
-    //         const {is_valid, has_next_game, next_game_avail, message} = await isGameValid(game);
-    //         console.log(is_valid, has_next_game, next_game_avail, message)
-    //
-    //
-    //         //if it has a next game and the next game available is ready (prev game submitted)
-    //         // (creates new game)
-    //         if (game == null || (has_next_game === true && next_game_avail === true)) {
-    //             await store(req, res, challenge)
-    //         }
-    //
-    //         //if it has a next game but the next game available is not ready (prev game submitted)
-    //         else if (has_next_game === true && next_game_avail === false) {
-    //             res.status(200).json({success: false, data:get_next_game(game)})
-    //         }
-    //
-    //         //if is valid is true (prev game not submitted, next game in future)
-    //         else if (is_valid === true) {
-    //             await read(req, res, game, "Game already exist.")
-    //         }
-    //
-    //         //if is valid is false (prev game not submitted, next game has passed)
-    //         else if (is_valid === false) {
-    //             res.status(200).json({success: false, message})
-    //         }
-    //
-    //     } catch (error) {
-    //         console.log(error)
-    //         res.status(500).json({success: false, error: error})
-    //     }
-    // } else {
-    //     res.status(200).json(result)
-    // }
 }
 
 //Create
 const store = async function (req, res, challenge) {
     let user_id = req.user.id;
-    let {avail, challenge_end_time, challenge_identifier} = challenge;
-    // TODO - Check how many games left for this challenge before creating a new game
+    let {challenge_end_time, challenge_identifier} = challenge;
 
     //calculate the time for the next game
     let nextGame = getNextGameTime(challenge_end_time);
@@ -163,7 +124,8 @@ const store = async function (req, res, challenge) {
         let gameData = {
             userId: user_id,
             challengeIdentifier: challenge_identifier,
-            pointsAvailable: points_available, timeAvailable: time_available
+            pointsAvailable: points_available, timeAvailable: time_available,
+            weeklyChallengeId: challenge.id
         }
         if (nextGame !== null) gameData['nextGameAt'] = nextGame
 
@@ -185,6 +147,20 @@ const read = async function (req, res, game, message) {
         where: {gameId: game.id},
         select: {
             id: true,
+            game: {
+                include: {
+                    WeeklyChallenge: {
+                        include: {
+                            WeeklyPrize: {
+                                include: {
+                                    Prize: {
+                                    }
+                                },
+                            }
+                        },
+                    }
+                },
+            },
             question: {
                 include: {
                     questionType: true,
@@ -193,20 +169,37 @@ const read = async function (req, res, game, message) {
         }
     })
 
+    console.log(game_questions)
+
+    let index = 0
+    let prizes = []
+    let all_prizes = []
     var game_questions_formatted = []
     game_questions.forEach((game_question) => {
+        if (index === 0) all_prizes = game_question.game.WeeklyChallenge.WeeklyPrize;
+
         let game_question_id = game_question.id;
         let {id, text, time, choices, answer, questionType} = game_question.question;
         let {points} = questionType;
 
         let formatted_question = {game_question_id, id, text, time, choices, answer, points, selected: null}
         game_questions_formatted.push(formatted_question)
+        index++;
+    });
+
+    all_prizes.forEach((prize) => {
+        let the_prize = prize.Prize;
+        the_prize['position'] = prize.position;
+        prizes.push(the_prize)
     });
 
     game['questions'] = game_questions_formatted;
+    game['prizes'] = prizes;
 
     res.status(200).json({success: true, game, message})
 }
+
+
 
 
 exports.validate = async function (req, res) {
@@ -243,6 +236,27 @@ exports.validate = async function (req, res) {
         res.status(404).json({success: false, error: {message: "This game has previously been validated!"}});
     }
 }
+
+
+// @route GET api/user/{id}/games/
+// @desc Returns all games for a specific user
+// @access Public
+exports.user_games = async function (req, res) {
+    try {
+        const user_id = req.params.id;
+
+        let games = await prisma.game.findMany({where: {
+                userId: parseInt(user_id)},
+            // include: {
+            //     Challenge: true
+            // },
+        })
+
+        res.status(200).json(games);
+    } catch (error) {
+        res.status(500).json({message: error.message})
+    }
+};
 
 function checkAnswers(questions) {
     let points_obtained = 0;
