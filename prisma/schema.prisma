@@ -12,26 +12,18 @@ datasource db {
 }
 
 model User {
-  id          Int           @id @default(autoincrement())
-  phoneNumber String        @unique
-  username    String        @unique
-  image       String?        @unique
-  userType    UserType      @relation(fields: [userTypeId], references: [id])
-  userTypeId  Int
-  profile     Profile?
-  Game        Game[]
-  UserPoints  UserPoints[]
-  Winner      Winner[]
-  WeeklyPrize WeeklyPrize[]
-}
-
-model Profile {
-  id         Int      @id @default(autoincrement())
-  bio        String?
-  user       User     @relation(fields: [user_id], references: [id])
-  user_id    Int      @unique
-  userType   UserType @relation(fields: [userTypeId], references: [id])
-  userTypeId Int      @unique
+  id                   Int           @id @default(autoincrement())
+  username             String        @unique
+  countryCode          String        @map("country_code")
+  phoneNumber          String        @unique @map("phone_number")
+  formattedPhoneNumber String        @unique @map("formatted_phone_number")
+  image                String?
+  userType             UserType      @relation(fields: [userTypeId], references: [id])
+  userTypeId           Int           @map("user_type_id")
+  Game                 Game[]
+  UserPoints           UserPoints[]
+  WeeklyPrize          WeeklyPrize[]
+  PrizeClaim           PrizeClaim[]
 }
 
 model Question {
@@ -49,30 +41,36 @@ model Question {
   GameQuestion   GameQuestion[]
 }
 
-model Challenge {
+model ChallengeTime {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   daily     Boolean  @default(false)
   startTime DateTime @db.Time(3)
   endTime   DateTime @db.Time(3)
+
+  @@map("challenge_time")
 }
 
 model Game {
-  id                  Int            @id @default(autoincrement())
-  user                User           @relation(fields: [userId], references: [id])
-  userId              Int
+  id     Int  @id @default(autoincrement())
+  User   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  WeeklyChallenge     WeeklyChallenge @relation(fields: [weeklyChallengeId], references: [id])
+  weeklyChallengeId   Int             @map("weekly_challenge_id")
   challengeIdentifier String
-  timeAvailable       Int?
-  pointsAvailable     Int?
-  pointsObtained      Int?
-  correctAnswers      Int?           @map("correct_answers")
-  wrongAnswers        Int?           @map("wrong_answers")
-  skipped             Int?
-  percent             Float?
-  initiatedAt         DateTime       @default(now())
-  nextGameAt          DateTime?      @db.Time(3)
-  submittedAt         DateTime?
-  gameQuestions       GameQuestion[]
+
+  timeAvailable   Int?
+  pointsAvailable Int?
+  pointsObtained  Int?
+  correctAnswers  Int?           @map("correct_answers")
+  wrongAnswers    Int?           @map("wrong_answers")
+  skipped         Int?
+  percent         Float?
+  initiatedAt     DateTime       @default(now())
+  nextGameAt      DateTime?      @db.Time(3)
+  submittedAt     DateTime?
+  gameQuestions   GameQuestion[]
 }
 
 model GameQuestion {
@@ -93,32 +91,18 @@ model Prize {
   image       String
   description String
   points      Int
-  DailyPrize  DailyPrize[]
-  WeeklyPrize WeeklyPrize[] @relation("FirstPrize")
-}
-
-model DailyPrize {
-  id         Int          @id @default(autoincrement())
-  Prize      Prize        @relation(fields: [prizeId], references: [id])
-  position   Int
-  prizeId    Int
-  startDate  DateTime
-  endDate    DateTime
-  PrizeClaim PrizeClaim[]
-
-  @@map("daily_prize")
+  WeeklyPrize WeeklyPrize[]
 }
 
 model WeeklyChallenge {
-  id         Int          @id @default(autoincrement())
-  name       String
-  startDate  DateTime
-  endDate    DateTime
-  createdAt  DateTime     @default(now())
-  PrizeClaim PrizeClaim[]
+  id        Int       @id @default(autoincrement())
+  name      String
+  startDate DateTime?
+  endDate   DateTime
+  createdAt DateTime  @default(now())
 
-  Winner      Winner[]
   WeeklyPrize WeeklyPrize[]
+  Game        Game[]
   @@map("weekly_challenge")
 }
 
@@ -129,54 +113,46 @@ model WeeklyPrize {
   WeeklyChallenge   WeeklyChallenge @relation(fields: [weeklyChallengeId], references: [id])
   weeklyChallengeId Int             @map("weekly_challenge_id")
 
-  Prize   Prize @relation("FirstPrize", fields: [prizeId], references: [id])
+  Prize   Prize @relation(fields: [prizeId], references: [id])
   prizeId Int
 
-  User   User? @relation(fields: [winner], references: [id])
-  winner Int?
+  User   User? @relation(fields: [userId], references: [id])
+  userId Int?
 
-  claimed     Boolean  @default(false)
-  dateClaimed DateTime @default(now())
-
-  sent      Boolean @default(false)
-  delivered Boolean @default(false)
+  claimed     Boolean   @default(false)
+  dateClaimed DateTime?
 
   createdAt  DateTime     @default(now())
   PrizeClaim PrizeClaim[]
-
-  Winner Winner[]
   @@map("weekly_prize")
 }
 
-model Winner {
-  id     Int  @id @default(autoincrement())
-  user   User @relation(fields: [userId], references: [id])
-  userId Int
-
-  WeeklyChallenge   WeeklyChallenge @relation(fields: [weeklyChallengeId], references: [id])
-  weeklyChallengeId Int             @map("weekly_challenge_id")
-
-  WeeklyPrize   WeeklyPrize? @relation(fields: [weeklyPrizeId], references: [id])
-  weeklyPrizeId Int?
-
-  createdAt  DateTime     @default(now())
-  PrizeClaim PrizeClaim[]
-}
-
 model PrizeClaim {
-  id                Int              @id @default(autoincrement())
-  Winner            Winner           @relation(fields: [winnerId], references: [id])
-  winnerId          Int              @unique
-  claimed           Boolean          @default(false)
-  sent              Boolean          @default(false)
-  delivered         Boolean          @default(false)
-  createdAt         DateTime         @default(now())
-  DailyPrize        DailyPrize?      @relation(fields: [dailyPrizeId], references: [id])
-  dailyPrizeId      Int?
-  WeeklyChallenge   WeeklyChallenge? @relation(fields: [weeklyChallengeId], references: [id])
-  weeklyChallengeId Int?
-  WeeklyPrize       WeeklyPrize?     @relation(fields: [weeklyPrizesId], references: [id])
-  weeklyPrizesId    Int?
+  id            Int         @id @default(autoincrement())
+  WeeklyPrize   WeeklyPrize @relation(fields: [weeklyPrizeId], references: [id])
+  weeklyPrizeId Int         @unique @map("weekly_prize_id")
+
+  User   User @relation(fields: [userId], references: [id])
+  userId Int  @unique @map("user_id")
+
+  fullname       String
+  phoneNumber    String  @map("phone_number")
+  addressLineOne String  @map("address_line_one")
+  addressLineTwo String? @map("address_line_two")
+  city           String
+  eircode        String?
+
+  claimed     Boolean   @default(false)
+  dateClaimed DateTime?
+
+  sent     Boolean   @default(false)
+  dateSent DateTime?
+
+  delivered     Boolean   @default(false)
+  dateDelivered DateTime?
+
+  createdAt DateTime @default(now())
+  @@map("prize_claim")
 }
 
 model QuestionType {
@@ -189,10 +165,9 @@ model QuestionType {
 }
 
 model UserType {
-  id       Int       @id @default(autoincrement())
-  name     String    @unique
+  id       Int    @id @default(autoincrement())
+  name     String @unique
   minGames Int
-  Profile  Profile[]
 
   User User[]
   @@map("user_type")
