@@ -5,20 +5,17 @@ const {check} = require('express-validator');
 const User = require('../controllers/user');
 const validate = require('../middlewares/validate');
 const WeeklyPrize = require("../controllers/weekly_prize");
+const WeeklyGame = require("../controllers/game");
+const upload = require("../config/upload");
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, './uploads/')
-    },
-    filename: function (req, file, cb) {
-        cb(null, file.originalname)
-    }
-})
-
-const upload = multer({ storage: storage })
-
+function isAdmin(req, res, next) {
+    let user = req.user;
+    let isAdmin = user.role === "admin";
+    if (isAdmin) next();
+    else return res.status(401).json({error :{message: "Sorry, you don't have the requiresd permission."}});
+}
 
 //INDEX
 router.get('/', User.index);
@@ -31,11 +28,11 @@ router.get('/', User.index);
 //     check('lastName').not().isEmpty().withMessage('You last name is required')
 // ], validate, User.create);
 
-
-//SHOW
+//PRIZES
 router.get('/:id/prizes/',  WeeklyPrize.user_prizes);
 
-router.get('/:id/games/',  WeeklyPrize.user_games);
+//GAMES
+router.get('/:id/games/',  WeeklyGame.user_games);
 
 //READ
 router.get('/:id',  User.read);
