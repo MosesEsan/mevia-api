@@ -30,33 +30,12 @@ function getNextGameTime(challengeEndTime) {
     return nextGame;
 }
 
-
-// exports.checkGame = async (challengeIdentifier) => {
-//     try {
-//         let userId = 25
-//         const game = await prisma.game.findFirst({
-//             where: {
-//                 challengeIdentifier: challengeIdentifier,
-//                 userId,
-//             },
-//             orderBy: {
-//                 initiatedAt: "desc"
-//             }
-//         })
-//
-//         return game;
-//     } catch (error) {
-//         throw error
-//     }
-// }
-
 async function saveGameQuestions(req, res, game, questions) {
     try {
         //create the game questions
         let formatted_questions = []
         questions.forEach((question) =>
             formatted_questions.push({gameId: game.id, questionId: question.id}));
-        console.log(formatted_questions)
 
         //insert into database
         await prisma.gameQuestion.createMany({data: formatted_questions, skipDuplicates: true})
@@ -73,8 +52,6 @@ exports.create = async function (req, res) {
     let user_id = req.user.id;
     const challenge = await ChallengeController.checkWeeklyChallenge();
 
-    console.log(challenge)
-
     if (challenge && challenge.WeeklyPrize.length > 0){
         //Before creating a game check if the available challenge times
         let result = await ChallengeController.checkChallenges(user_id)
@@ -82,20 +59,17 @@ exports.create = async function (req, res) {
         //if it has a next game and the next game available is ready (prev game submitted)
         // (creates new game)
         if (result.new_game_avail === true) {
-            console.log("1")
             let current_challenge = {...challenge, ...result.current_challenge}
             await store(req, res, current_challenge)
         }
 
         //if is valid is true (prev game not submitted, next game in future) (return the the gajme)
         else if (result.current_game_avail === true && result.current_game !== null) {
-            console.log("2")
             await read(req, res, result.current_game, "Game already exist.")
         }
 
         //if it has a next game but the next game available is not ready (prev game submitted)
         else if (result.next_game !== null) {
-            console.log("3")
             res.status(200).json(result)
         }
 
@@ -169,7 +143,6 @@ const read = async function (req, res, game, message) {
         }
     })
 
-    console.log(game_questions)
 
     let index = 0
     let prizes = []
@@ -209,7 +182,6 @@ exports.validate = async function (req, res) {
     const game = await prisma.game.findFirst({where: {id: game_id}})
     if (!game) return res.status(404).json({success: false, error: {message: "Game does not exist!"}});
 
-    console.log(game)
     if (game.submittedAt === null) {
         try {
             let {prisma_array, points_obtained, correct_answers, wrong_answers, skipped} = checkAnswers(questions);
@@ -265,10 +237,6 @@ function checkAnswers(questions) {
     let skipped = 0;
 
     let prisma_array = [];
-
-    console.log("==questions===")
-    console.log(questions)
-    console.log("=====")
 
     questions.map((question) => {
             const {selected, answer, points} = question;

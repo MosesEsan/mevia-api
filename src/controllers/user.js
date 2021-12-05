@@ -12,7 +12,6 @@ exports.index = async (req, res) => {
         res.set('X-Total-Count', users.length)
         res.status(200).json(users)
     } catch (error) {
-        console.log(error)
         throw error
     }
 }
@@ -24,7 +23,7 @@ exports.read = async function (req, res) {
     const id = req.params.id;
     try {
         let user = await prisma.user.findUnique({where: {id: parseInt(id)}})
-        user = await get_user_stats(user, id)
+        user = await get_user_stats(user)
         res.status(200).json(user);
 
     } catch (e) {
@@ -48,7 +47,6 @@ exports.update = async function (req, res) {
         const user = await prisma.user.update({where: { id: parseInt(id) }, data})
         res.status(200).json(user);
     } catch (error) {
-        console.log(error)
         res.status(500).json({message: error.message});
     }
 };
@@ -69,20 +67,16 @@ const get_user_stats = async (user) => {
             _count: {
                 id: true,
             },
-        })
-
-
-        let {_sum, _count} = game_points;
-        let points_total = _sum.pointsObtained;
-        let no_of_games = _count.id;
+        });
+        let points_total = game_points._sum.pointsObtained;
+        let no_of_games = game_points._count.id;
 
         const user_points = await prisma.userPoints.aggregate({
             where: {user_id: parseInt(user.id)},
             _sum: {
                 points: true,
             },
-        })
-
+        });
         const user_types = await prisma.userType.findMany();
 
         let current = null
@@ -108,6 +102,22 @@ const get_user_stats = async (user) => {
     }
 }
 
+const get_user_games_stats = async (user) => {
+    try{
+        const games_played = await prisma.game.aggregate({
+            where: {
+                userId: parseInt(user.id),
+                NOT: {submittedAt: null}
+            },
+            _count: {id: true}
+        });
+
+        return games_played._count.id;
+    }catch (e) {
+        throw e;
+    }
+}
+
 // @route GET api/user/{id}
 // @desc Returns a specific user
 // @access Public
@@ -116,7 +126,6 @@ exports.profile_image = async function (req, res) {
         if (!req.file)  return res.status(400).json({error: {message: 'No files were uploaded.'}});
 
         const id = req.params.id;
-        console.log(JSON.stringify(req.file))
 
         const user = await prisma.user.update({where: { id: parseInt(id) }, data:{image:req.file.path}})
 
@@ -142,9 +151,6 @@ exports.games = async function (req, res) {
                 },
             }
         })
-
-        console.log(games)
-
         res.status(200).json(games);
     } catch (e) {
         logger.error(e);
@@ -154,4 +160,5 @@ exports.games = async function (req, res) {
 
 
 exports.get_user_stats = get_user_stats;
+exports.get_user_games_stats = get_user_games_stats;
 

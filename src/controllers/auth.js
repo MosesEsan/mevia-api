@@ -30,7 +30,6 @@ exports.register = async (req, res) => {
         // await sendVerificationCode(user, req, res);
         await addPoints(user, req, res);
     } catch (error) {
-        console.log(error)
         res.status(500).json({error})
     }
 };
@@ -66,8 +65,6 @@ exports.verify = async (req, res) => {
         verificationResult = await twilio.verify.services(VERIFICATION_SID)
             .verificationChecks
             .create({code: verificationCode, to: formattedPhoneNumber});
-
-        console.log(verificationResult);
 
         // Verify and save the user
         if (verificationResult.status === 'approved') {

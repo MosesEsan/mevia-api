@@ -58,7 +58,6 @@ exports.update = async function (req, res) {
         const question = await prisma.question.update({where: { id: parseInt(id) }, data})
         res.status(200).json(question);
     } catch (error) {
-        console.log(error)
         res.status(500).json({message: error.message});
     }
 };
@@ -92,14 +91,12 @@ exports.import = async (req, res) => {
         for (const row of rows) {
             let levelsd = {};
             questiontypes.forEach( (obj) => levelsd[obj.name] = obj.id);
-            console.log("levelsd", levelsd)
             let question = await addToDatabase(row, levelsd)
             questions.push(question)
         }
 
         return res.status(200).json({success: true, questions})
     } catch (error) {
-        console.log(error)
         res.status(500).json({success: false, error})
     }
 };
@@ -126,7 +123,6 @@ exports.random = async () => {
         else return {success: false, "message": "No Questions Available. Try Again Later"}
 
     } catch (error) {
-        console.log(error)
         throw error
     }
 }

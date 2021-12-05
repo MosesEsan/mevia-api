@@ -13,7 +13,6 @@ exports.index = async (req, res) => {
         res.set('X-Total-Count', prizes.length)
         res.status(200).json(prizes)
     } catch (error) {
-        console.log(error)
         throw error
     }
 }
@@ -28,8 +27,7 @@ exports.create = async (req, res) => {
         const prize = await prisma.weeklyPrize.create({data: {...req.body}})
         res.status(200).json(prize)
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        res.status(500).json({error});
     }
 };
 
@@ -59,7 +57,6 @@ exports.update = async function (req, res) {
         const question = await prisma.weeklyPrize.update({where: {id: parseInt(id)}, data})
         res.status(200).json(question);
     } catch (error) {
-        console.log(error)
         res.status(500).json(error);
     }
 };
@@ -115,10 +112,6 @@ exports.challenge_prizes = async function (req, res) {
 
         start = moment(start).add(1, 'days') //the beginning of this week
         end = moment(end).add(1, 'days') //the end of this week
-
-        console.log(start)
-        console.log(end)
-
         const challenge = await prisma.weeklyChallenge.findFirst({
             where: {
                 startDate: new Date(start),
@@ -134,16 +127,9 @@ exports.challenge_prizes = async function (req, res) {
             orderBy: {createdAt: 'asc'}
         })
 
-        if (challenge && challenge.WeeklyPrize.length > 0)
-            res.status(200).json(challenge.WeeklyPrize)
-        else{
-            res.status(401).json({error: {message: "No Prizes available."}})
-
-        }
-
+        if (challenge && challenge.WeeklyPrize.length > 0) res.status(200).json(challenge.WeeklyPrize)
+        else res.status(401).json({error: {message: "No Prizes available."}})
     } catch (error) {
-        console.log(e);
         res.status(500).json({error})
     }
-
 };
