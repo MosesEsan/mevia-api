@@ -22,6 +22,12 @@ router.post('/', [
     check('questionTypeId').not().isEmpty().withMessage('questionTypeId is required')
 ], validate, Question.create);
 
+router.get('/import', [
+], validate, Question.import);
+
+router.get('/random', [
+], validate, Question.random);
+
 //READ
 router.get('/:id',  Question.read);
 
@@ -30,11 +36,5 @@ router.put('/:id', Question.update);
 
 //DELETE
 // router.delete('/:id', Question.destroy);
-
-router.get('/import', [
-], validate, Question.import);
-
-router.get('/random', [
-], validate, Question.random);
 
 module.exports = router;
