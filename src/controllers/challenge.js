@@ -100,8 +100,9 @@ async function checkWeeklyChallenge() {
 }
 
 
-async function checkChallenges(user_id) {
+async function checkChallenges(user_id, weekly_challenge) {
     try {
+        let weekly_challenge_name = weekly_challenge.name || null
         //Get challenges times
         const challengeTimes = await prisma.challengeTime.findMany({where: {daily: true}, orderBy: {startTime: 'asc'}})
 
@@ -153,7 +154,8 @@ async function checkChallenges(user_id) {
                     challenge_start_time,
                     challenge_end_time,
                     challenge_time_left,
-                    challenge_description
+                    challenge_description,
+                    weekly_challenge_name
                 };
             }else if (check.isBefore(startTime) && next_challenge === null){
                 //    if this challenge is in the future

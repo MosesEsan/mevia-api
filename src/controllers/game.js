@@ -54,7 +54,7 @@ exports.create = async function (req, res) {
 
     if (challenge && challenge.WeeklyPrize.length > 0){
         //Before creating a game check if the available challenge times
-        let result = await ChallengeController.checkChallenges(user_id)
+        let result = await ChallengeController.checkChallenges(user_id, challenge)
 
         //if it has a next game and the next game available is ready (prev game submitted)
         // (creates new game)
@@ -143,13 +143,20 @@ const read = async function (req, res, game, message) {
         }
     })
 
+    // console.log(game_questions)
+
 
     let index = 0
     let prizes = []
     let all_prizes = []
-    var game_questions_formatted = []
+    let weekly_challenge = ""
+    let game_questions_formatted = []
     game_questions.forEach((game_question) => {
-        if (index === 0) all_prizes = game_question.game.WeeklyChallenge.WeeklyPrize;
+        //extract the prizes from the first record -
+        if (index === 0) {
+            weekly_challenge = game_question.game.WeeklyChallenge;
+            all_prizes = game_question.game.WeeklyChallenge.WeeklyPrize;
+        }
 
         let game_question_id = game_question.id;
         let {id, text, time, choices, answer, questionType} = game_question.question;
@@ -166,6 +173,7 @@ const read = async function (req, res, game, message) {
         prizes.push(the_prize)
     });
 
+    game['weekly_challenge'] = weekly_challenge;
     game['questions'] = game_questions_formatted;
     game['prizes'] = prizes;
 
