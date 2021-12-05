@@ -86,11 +86,16 @@ model GameQuestion {
 }
 
 model Prize {
-  id          Int           @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   image       String
   description String
   points      Int
+  UserType    UserType? @relation(fields: [userTypeId], references: [id])
+  userTypeId  Int?      @map("user_type_id")
+
+
+  available   Boolean?      @default(false)
   WeeklyPrize WeeklyPrize[]
 }
 
@@ -171,6 +176,7 @@ model UserType {
 
   User User[]
   @@map("user_type")
+  Prize Prize[]
 }
 
 model UserPoints {
