@@ -13,7 +13,6 @@ exports.index = async (req, res) => {
         res.set('X-Total-Count', prizes.length)
         res.status(200).json(prizes)
     } catch (error) {
-        console.log(error)
         throw error
     }
 }
@@ -59,7 +58,6 @@ exports.update = async function (req, res) {
         const question = await prisma.weeklyChallenge.update({where: { id: parseInt(id) }, data})
         res.status(200).json(question);
     } catch (error) {
-        console.log(error)
         res.status(500).json({message: error.message});
     }
 };
@@ -70,21 +68,14 @@ exports.update = async function (req, res) {
 exports.check = async function (req, res) {
     try {
         const challenge = await checkWeeklyChallenge();
-
-
         if (challenge && challenge.WeeklyPrize.length > 0){
             let user_id = req.user.id;
             const result = await checkChallenges(user_id, challenge);
-
-            console.log("RESPONSE")
-            console.log(result)
-            console.log("RESPONSE")
             return res.status(200).json(result)
         }else{
             res.status(401).json({error: {message: "No Challenges available."}})
         }
     } catch (error) {
-        console.log(error)
         res.status(500).json({error})
     }
 };
@@ -183,6 +174,34 @@ async function checkChallenges(user_id) {
             next_challenge= null;
         }
 
+        if (current_challenge === null && next_challenge === null && challengeTimes.length > 0){
+            let startTime = new moment(challengeTimes[0].startTime);
+            startTime = startTime.format("HH:mm:ss");
+            startTime = moment(startTime, format)
+
+            let endTime = new moment(challengeTimes[0].endTime);
+            endTime = endTime.format("HH:mm:ss");
+            endTime = moment(endTime, format)
+
+            let today = moment()
+            let tomorrow = moment().add(1, "day");
+            tomorrow.set({
+                hour:   startTime.get('hour'),
+                minute: startTime.get('minute'),
+                second: startTime.get('second')
+            });
+
+            challenge_time_left =  tomorrow.valueOf() - today.valueOf();
+            next_challenge_avail = true;
+            next_challenge = {
+                challenge_no:`1/${challengeTimes.length}`,
+                challenge_start_time:startTime,
+                challenge_end_time:endTime,
+                challenge_time_left,
+                challenge_description:"Take part in daily challenges and be in a chance to win one of the weekly prizes.",
+            }
+        }
+
         let challenge = {
             avail,
             current: false,
@@ -211,11 +230,7 @@ async function checkChallenges(user_id) {
             try {
                 const game = await checkGame(challenge_identifier, user_id)
 
-
-                console.log("in here")
-
                 const {is_valid, has_next_game, next_game_avail, message} = await isGameValid(game);
-                console.log(is_valid, has_next_game, next_game_avail, message)
 
                 //if no game was found or it has a next game and the next game available is ready (prev game submitted) (creates new game)
                 if (game == null || (has_next_game === true && next_game_avail === true)) {
@@ -240,10 +255,6 @@ async function checkChallenges(user_id) {
             } catch (error) {
             }
         }
-
-        console.log("====")
-        console.log(challenge)
-        console.log("====")
 
         return challenge;
     } catch (error) {
