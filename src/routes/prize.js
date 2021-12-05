@@ -18,6 +18,11 @@ router.post('/', [
     check('points').not().isEmpty().withMessage('points is required')
 ], validate, Prize.create);
 
+//REDEEM
+router.post('/redeem', [
+    check('prize_id').not().isEmpty().withMessage('Prize Id is required'),
+], Prize.redeem);
+
 //CLAIM
 router.post('/claim', [
     check('weeklyPrizeId').not().isEmpty().withMessage('Weekly Prize Id is required'),

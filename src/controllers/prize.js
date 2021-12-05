@@ -2,6 +2,7 @@ const {PrismaClient} = require('@prisma/client')
 const moment = require("moment");
 
 const prisma = new PrismaClient()
+const UserController = require('../controllers/user');
 
 const logger = require('../../logger')();
 
@@ -10,13 +11,43 @@ const logger = require('../../logger')();
 // @access Public
 exports.index = async (req, res) => {
     try {
-        const prizes = await prisma.prize.findMany()
+        const prizes = await prisma.prize.findMany({
+            orderBy: {points: "asc"},
+            include:{
+                userType:true
+            }
+        })
+
+        const games_played = await prisma.game.aggregate({
+            where: {
+                userId: parseInt(req.user.id),
+                NOT: {submittedAt: null}
+            },
+            _count: {id: true}
+        });
+
+        let no_of_games = games_played._count.id;
+
+        prizes.map((prize, idx) => {
+            let canRedeem = false;
+            let message = "";
+
+            let user_type = prize.userType.name;
+            let minGames = prize.userType.minGames;
+
+            //if the user total games is greater than or equal to the user type min  games
+            if (no_of_games >= minGames) canRedeem = true;
+            else message = `You need to be a ${user_type.toUpperCase()} user to redeem this reward.`
+
+            prize['can_redeem'] = canRedeem;
+            prize['message'] = message;
+        })
+
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', prizes.length)
         res.status(200).json(prizes)
     } catch (error) {
-        console.log(error)
-        throw error
+        res.status(500).json({error});
     }
 }
 //
@@ -77,7 +108,7 @@ exports.read = async function (req, res) {
 
         res.status(200).json(prize);
     } catch (error) {
-        res.status(500).json({message: error.message})
+        res.status(500).json({error});
     }
 };
 
@@ -93,14 +124,39 @@ exports.update = async function (req, res) {
         const prize = await prisma.prize.update({where: { id: parseInt(id) }, data})
         res.status(200).json(prize);
     } catch (error) {
-        console.log(error)
-        res.status(500).json({message: error.message});
+        res.status(500).json({error});
     }
 };
 
 
-// @route GET api/user/{id}/prizes/
-// @desc Returns all prizes for a specific user
+exports.redeem = async (req, res) => {
+    try {
+        let can_redeem = false;
+        let message = "";
+        let remaining_points = 0
+
+        const user = UserController.get_user_stats(req.user);
+        const prize = await prisma.prize.findFirst({where: {id: parseInt(req.body.prize_id)}});
+
+        if (prize){
+            let points_required = prize.points;
+            //if the user total games is greater than or equal to the user type min  games
+            if (user.points >= points_required) {
+                can_redeem = true;
+                remaining_points = user.points - points_required;
+            }
+            else message = `You need ${points_required} points to redeem this reward.`
+        }
+
+        res.status(200).json({can_redeem, message, user_points:user.points, remaining_points })
+    } catch (error) {
+        res.status(500).json({error});
+    }
+}
+
+
+// @route GET api/
+// @desc R
 // @access Public
 exports.claim = async function (req, res) {
     try {
@@ -131,8 +187,6 @@ async function saveClaim(req, res, new_claim) {
                 claimed: true,
                 dateClaimed: new_claim.dateClaimed
             }})
-
-        console.log(updatedWeeklyPrize)
 
         res.status(200).json({claim: new_claim, message: "You have successfully claimed your prize. \n One of our agents will contact you to confirm and arrange delivery."});
     } catch (error) {
