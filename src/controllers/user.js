@@ -26,9 +26,9 @@ exports.read = async function (req, res) {
         user = await get_user_stats(user)
         res.status(200).json(user);
 
-    } catch (e) {
+    } catch (error) {
         logger.error(e);
-        res.status(500).json({success: false, message: e.message})
+        res.status(500).json({error})
     }
 };
 
@@ -136,27 +136,6 @@ exports.profile_image = async function (req, res) {
     }
 };
 
-// @route GET api/user/{id}/games
-// @desc Returns all games for a specific user
-// @access Public
-exports.games = async function (req, res) {
-    try {
-        const id = req.params.id;
-
-        const games = await prisma.game.findMany({
-            where: {
-                userId: parseInt(id),
-                NOT: {
-                    submittedAt: null
-                },
-            }
-        })
-        res.status(200).json(games);
-    } catch (e) {
-        logger.error(e);
-        res.status(500).json({success: false, message: e.message})
-    }
-};
 
 
 exports.get_user_stats = get_user_stats;
