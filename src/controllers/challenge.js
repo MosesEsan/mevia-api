@@ -82,7 +82,7 @@ exports.check = async function (req, res) {
 
 
 async function checkWeeklyChallenge() {
-    const today = moment().subtract(1, 'days') ;
+    const today = moment()
     let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
     let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
