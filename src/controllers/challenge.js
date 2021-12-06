@@ -83,11 +83,11 @@ exports.check = async function (req, res) {
 
 async function checkWeeklyChallenge() {
     const today = moment().subtract(1, 'days') ;
-    let start = today.startOf('week').format('YYYY-MM-DD HH:mm');
-    let end = today.endOf('week').format('YYYY-MM-DD HH:mm');
+    let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
+    let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
-    start = moment(start).add(1, 'days') //the beginning of this week
-    end = moment(end).add(1, 'days') //the end of this week
+    start = moment(start)
+    end = moment(end)
 
     return await prisma.weeklyChallenge.findFirst({
         where: {

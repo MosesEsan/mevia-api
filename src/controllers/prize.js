@@ -11,7 +11,7 @@ const logger = require('../../logger')();
 // @access Public
 exports.index = async (req, res) => {
     try {
-        const prizes = await prisma.prize.findMany({
+        let prizes = await prisma.prize.findMany({
             orderBy: {points: "asc"},
             include:{
                 userType:true
@@ -25,23 +25,13 @@ exports.index = async (req, res) => {
             },
             _count: {id: true}
         });
-
         let no_of_games = games_played._count.id;
 
-        prizes.map((prize, idx) => {
-            let canRedeem = false;
-            let message = "";
+        prizes = checkIfRedeemable(prizes, no_of_games);
 
-            let user_type = prize.userType.name;
-            let minGames = prize.userType.minGames;
-
-            //if the user total games is greater than or equal to the user type min  games
-            if (no_of_games >= minGames) canRedeem = true;
-            else message = `You need to be a ${user_type.toUpperCase()} user to redeem this reward.`
-
-            prize['can_redeem'] = canRedeem;
-            prize['message'] = message;
-        })
+        console.log("ready to return")
+        console.log(prizes)
+        console.log("ready to return")
 
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', prizes.length)
@@ -50,37 +40,6 @@ exports.index = async (req, res) => {
         res.status(500).json({error});
     }
 }
-//
-// exports.index = async function (req, res) {
-//     try {
-//         const today = moment().subtract(1, 'days') ;
-//         let start = today.startOf('week').format('YYYY-MM-DD HH:mm');
-//         let end = today.endOf('week').format('YYYY-MM-DD HH:mm');
-//
-//         start = moment(start).add(1, 'days') //the beginning of this week
-//         end = moment(end).add(1, 'days') //the end of this week
-//
-//         const challenge = await prisma.weeklyChallenge.findFirst({
-//             where: {
-//                 startDate: new Date(start),
-//                 endDate: {
-//                     lte: new Date(end),
-//                 },
-//             }, orderBy: {createdAt: 'asc'}
-//         })
-//
-//         if (challenge){
-//             const prizes = await prisma.weeklyPrize.findMany({where: {weeklyChallengeId: challenge.id}})
-//             res.status(200).json(prizes)
-//         }
-//
-//         res.status(200).json([]);
-//     } catch (e) {
-//         logger.error(e);
-//         res.status(500).json({success: false, message: e.message})
-//     }
-// };
-
 
 //CRUD
 
@@ -177,8 +136,6 @@ exports.claim = async function (req, res) {
     }
 };
 
-
-
 async function saveClaim(req, res, new_claim) {
     try {
         const updatedWeeklyPrize = await prisma.weeklyPrize.update({
@@ -194,6 +151,29 @@ async function saveClaim(req, res, new_claim) {
         await prisma.prizeClaim.delete({where: {id: new_claim.id}})
         res.status(500).json({error})
     }
+}
+
+
+
+
+async function checkIfRedeemable(prizes, no_of_games) {
+    prizes.map((prize, idx) => {
+        let canRedeem = false;
+        let message = "";
+
+        let user_type = prize.userType.name;
+        let minGames = prize.userType.minGames;
+
+        //if the user total games is greater than or equal to the user type min  games
+        if (no_of_games >= minGames) canRedeem = true;
+        else message = `You need to be a ${user_type.toUpperCase()} user to redeem this reward.`
+
+        prize['can_redeem'] = canRedeem;
+        prize['message'] = message;
+        console.log(idx)
+    })
+
+    return prizes;
 }
 
 

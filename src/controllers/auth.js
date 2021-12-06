@@ -1,6 +1,4 @@
-const {PrismaClient} = require('@prisma/client')
-
-const prisma = new PrismaClient()
+const prisma = require("../config/prisma");
 
 const logger = require('../../logger')();
 const {generateJWT} = require('../utils/generateToken');

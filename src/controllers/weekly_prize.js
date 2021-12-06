@@ -89,26 +89,10 @@ exports.user_prizes = async function (req, res) {
 // @desc Returns all prizes for a specific user
 // @access Public
 exports.challenge_prizes = async function (req, res) {
-    // try {
-    //     const id = req.params.id;
-    //
-    //     let prizes = await prisma.weeklyPrize.findMany({
-    //         where: {
-    //             weeklyChallengeId: parseInt(id)
-    //         },
-    //         include: {
-    //             Prize: true
-    //         },
-    //     })
-    //
-    //     res.status(200).json(prizes);
-    // } catch (error) {
-    //     res.status(500).json({message: error.message})
-    // }
     try {
-        const today = moment().subtract(1, 'days') ;
-        let start = today.startOf('week').format('YYYY-MM-DD HH:mm');
-        let end = today.endOf('week').format('YYYY-MM-DD HH:mm');
+        const today = moment();
+        let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
+        let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
         start = moment(start).add(1, 'days') //the beginning of this week
         end = moment(end).add(1, 'days') //the end of this week

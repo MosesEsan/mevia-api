@@ -1,13 +1,10 @@
-const {PrismaClient} = require('@prisma/client')
 const moment = require("moment");
-
-const prisma = new PrismaClient()
-
 const logger = require('../../logger')();
 
+const prisma = require("../config/prisma");
 
-// // @route GET api/user/{id}
-// // @desc Returns a specific user
+// // @route GET api/
+// // @desc
 // // @access Public
 exports.index = async function (req, res) {
     try {
@@ -27,10 +24,9 @@ exports.index = async function (req, res) {
             if (idx < 3) top_leaders.push(user)
         })
 
-
         res.status(200).json({success: true, data: {leaderboard, top_leaders, title: `Top leaders of the ${type}`}});
     } catch (error) {
-        logger.error(e);
+        logger.error(error);
         res.status(500).json({error})
     }
 };
@@ -38,12 +34,12 @@ exports.index = async function (req, res) {
 
 async function runQuery(type) {
     try {
-        const today = moment();
-        let startOfWeek = today.startOf('week').format('YYYY-MM-DD HH:mm');
-        let endOfWeek = today.endOf('week').format('YYYY-MM-DD HH:mm');
+        const today = moment()
+        let startOfWeek = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
+        let endOfWeek = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
-        let start = moment(startOfWeek).add(1, 'days')
-        let end = moment(endOfWeek).add(1, 'days')
+        let start = moment(startOfWeek)
+        let end = moment(endOfWeek)
 
         if (type === "today") {
             // Today
@@ -61,7 +57,7 @@ async function runQuery(type) {
             end = moment(endOfMonth)
         }
 
-    const leaderboard = await prisma.$queryRaw`
+        const leaderboard = await prisma.$queryRaw`
             SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points, COALESCE(points_available, 0) AS points_available, 
             COALESCE(no_of_games_played, 0) AS no_of_games_played,
             (points_obtained/no_of_games_played) as average
@@ -92,27 +88,11 @@ async function runQuery(type) {
             ORDER BY points desc, no_of_games_played desc 
             LIMIT 10`;
 
-    return leaderboard;
+        return leaderboard;
 
-} catch (error) {
+    } catch (error) {
         throw error;
-}
+    }
 }
 
-// UNION
-// (SELECT
-// game.userId as user_id,
-//     user.username,
-//     0 as points_obtained,
-//     sum(game.pointsAvailable) as points_available,
-//     count(game.userId) as no_of_games_played,
-//     (sum(qt.points)/count(game.userId)) as average
-//
-// FROM game_question gq
-// INNER JOIN question ON gq.questionId = question.id
-// INNER JOIN game ON gq.gameId = game.id
-// INNER JOIN question_type qt ON question.questionTypeId = qt.id
-// INNER JOIN user ON game.userId = user.id
-// WHERE game.submittedAt IS NOT NULL AND gq.correct is False AND game.initiatedAt BETWEEN ${new Date(start)} AND ${new Date(end)}
-// GROUP BY game.userId
-// ORDER BY points_obtained desc, no_of_games_played desc)
+exports.runQuery = runQuery;

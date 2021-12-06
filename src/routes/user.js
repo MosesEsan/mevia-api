@@ -45,6 +45,5 @@ router.put('/:id', User.update);
 
 router.put('/:id/upload', upload.single("image"), User.profile_image)
 
-router.get('/:id/games', User.games)
 
 module.exports = router;
