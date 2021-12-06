@@ -210,10 +210,10 @@ exports.validate = async function (req, res) {
 
             res.status(200).json({success: true, game: updatedGame, message: "Congratulations"})
         } catch (error) {
-            res.status(500).json({success: false, error: error})
+            res.status(500).json({error})
         }
     } else {
-        res.status(404).json({success: false, error: {message: "This game has previously been validated!"}});
+        res.status(404).json({error: {message: "This game has previously been validated!"}});
     }
 }
 
@@ -223,18 +223,22 @@ exports.validate = async function (req, res) {
 // @access Public
 exports.user_games = async function (req, res) {
     try {
-        const user_id = req.params.id;
-
-        let games = await prisma.game.findMany({where: {
-                userId: parseInt(user_id)},
-            // include: {
-            //     Challenge: true
-            // },
-        })
+        const id = req.params.id;
+        const games = await prisma.game.findMany({
+            where: {
+                userId: parseInt(id),
+                NOT: {
+                    submittedAt: null
+                },
+            },
+            include:{
+                WeeklyChallenge:true
+            }
+        });
 
         res.status(200).json(games);
     } catch (error) {
-        res.status(500).json({message: error.message})
+        res.status(500).json({error})
     }
 };
 
