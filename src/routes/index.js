@@ -8,6 +8,7 @@ const challenge = require('./challenge');
 const user = require('./user');
 const prize = require('./prize');
 const leaderboard = require('./leaderboard');
+const notification = require('./notification');
 
 const authenticate = require('../middlewares/authenticate');
 const express = require("express");
@@ -41,6 +42,7 @@ module.exports = app => {
     app.use('/api/challenge', authenticate,challenge);
     app.use('/api/game', authenticate, game);
     app.use('/api/leaderboard', authenticate, leaderboard);
+    app.use('/api/notification', authenticate, notification);
 
     app.use('/api/prize', authenticate, prize);
     // app.use('/api/prize', prize);
