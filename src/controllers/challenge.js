@@ -82,7 +82,7 @@ exports.check = async function (req, res) {
 
 
 async function checkWeeklyChallenge() {
-    const today = moment().subtract(1, 'days') ;
+    const today = moment();
     let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
     let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
@@ -136,6 +136,7 @@ async function checkChallenges(user_id, weekly_challenge) {
                 year = check.format('YYYY'),
                 hour = startTime.format('HH'),
                 minutes = startTime.format('mm');
+            
 
             if (check.isBetween(startTime, endTime)) {
                 avail = true;
