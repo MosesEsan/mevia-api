@@ -159,10 +159,12 @@ const read = async function (req, res, game, message) {
         }
 
         let game_question_id = game_question.id;
-        let {id, text, time, choices, answer, questionType} = game_question.question;
+        let {id, text, time, choice_one, choice_two, choice_three, choice_four, answer, questionType} = game_question.question;
         let {points} = questionType;
 
-        let formatted_question = {game_question_id, id, text, time, choices, answer, points, selected: null}
+        let formatted_question = {game_question_id, id, text, time, answer, points, selected: null}
+        formatted_question["choices"] = JSON.stringify([choice_one, choice_two, choice_three,choice_four])
+
         game_questions_formatted.push(formatted_question)
         index++;
     });
