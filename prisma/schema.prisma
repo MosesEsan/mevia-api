@@ -12,29 +12,29 @@ datasource db {
 }
 
 model User {
-  id                   Int           @id @default(autoincrement())
-  username             String        @unique
-  countryCode          String        @map("country_code")
-  phoneNumber          String        @unique @map("phone_number")
-  formattedPhoneNumber String        @unique @map("formatted_phone_number")
+  id                   Int                @id @default(autoincrement())
+  username             String             @unique
+  countryCode          String             @map("country_code")
+  phoneNumber          String             @unique @map("phone_number")
+  formattedPhoneNumber String             @unique @map("formatted_phone_number")
   image                String?
-  userType             UserType      @relation(fields: [userTypeId], references: [id])
-  userTypeId           Int           @map("user_type_id")
+  userType             UserType           @relation(fields: [userTypeId], references: [id])
+  userTypeId           Int                @map("user_type_id")
   Game                 Game[]
   UserPoints           UserPoints[]
   WeeklyPrize          WeeklyPrize[]
   PrizeClaim           PrizeClaim[]
+  PushNotification     PushNotification[]
 }
 
 model Question {
   id             Int            @id @default(autoincrement())
   text           String
   time           Int
-  choice_one     String?
-  choice_two     String?
-  choice_three   String?
-  choice_four    String?
-  choices        String         @db.Text
+  choice_one     String         @db.Text
+  choice_two     String         @db.Text
+  choice_three   String         @db.Text
+  choice_four    String         @db.Text
   answer         String
   questionType   QuestionType   @relation(fields: [questionTypeId], references: [id])
   questionTypeId Int
@@ -111,6 +111,19 @@ model WeeklyChallenge {
   @@map("weekly_challenge")
 }
 
+model PushNotification {
+  id     Int  @id @default(autoincrement())
+  User   User @relation(fields: [userId], references: [id])
+  userId Int  @unique
+
+  deviceToken String
+  active      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@map("push_notification")
+}
+
 model WeeklyPrize {
   id       Int @id @default(autoincrement())
   position Int
@@ -174,9 +187,9 @@ model UserType {
   name     String @unique
   minGames Int
 
-  User User[]
-  @@map("user_type")
+  User  User[]
   Prize Prize[]
+  @@map("user_type")
 }
 
 model UserPoints {
