@@ -105,9 +105,9 @@ exports.import = async (req, res) => {
 exports.random = async () => {
     try {
         const questions = await prisma.$queryRaw`
-        (SELECT q.id, qt.name as difficulty, qt.points, text, choices, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" ORDER BY RAND() LIMIT 1) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choices, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" ORDER BY RAND() LIMIT 1) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choices, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" ORDER BY RAND() LIMIT 1) `
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" ORDER BY RAND() LIMIT 3) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" ORDER BY RAND() LIMIT 3) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" ORDER BY RAND() LIMIT 3) `
 
         if (questions.length > 0) {
             let points_available = 0;
@@ -115,6 +115,7 @@ exports.random = async () => {
             questions.forEach((question) => {
                 points_available = points_available + question["points"]
                 time_available = time_available + question["time"]
+                question["choices"] = JSON.stringify([question["choice_one"], question["choice_two"], question["choice_three"], question["choice_four"]])
                 question["selected"] = null;
             });
 
@@ -137,7 +138,6 @@ async function addToDatabase(row, levels) {
         choice_two: choice2,
         choice_three: choice3,
         choice_four: choice4,
-        choices: JSON.stringify([choice1, choice2, choice3, choice4]),
         answer,
         time: parseInt(time),
         questionTypeId

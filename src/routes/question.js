@@ -17,7 +17,6 @@ router.post('/', [
     check('choice_three').not().isEmpty().withMessage('choice_three is required'),
     check('choice_two').not().isEmpty().withMessage('choice_two is required'),
     check('choice_four').not().isEmpty().withMessage('choice_four is required'),
-    check('choices').not().isEmpty().withMessage('choices is required'),
     check('answer').not().isEmpty().withMessage('answer is required'),
     check('questionTypeId').not().isEmpty().withMessage('questionTypeId is required')
 ], validate, Question.create);
