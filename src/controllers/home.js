@@ -72,7 +72,7 @@ exports.index = async function (req, res) {
             prizes = await prisma.prize.findMany({
                 orderBy: {points: "asc"},
                 include:{
-                    userType:true
+                    UserType:true
                 }
             })
         } catch (error) {

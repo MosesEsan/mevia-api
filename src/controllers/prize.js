@@ -14,7 +14,7 @@ exports.index = async (req, res) => {
         let prizes = await prisma.prize.findMany({
             orderBy: {points: "asc"},
             include:{
-                userType:true
+                UserType:true
             }
         })
 
@@ -27,11 +27,7 @@ exports.index = async (req, res) => {
         });
         let no_of_games = games_played._count.id;
 
-        prizes = checkIfRedeemable(prizes, no_of_games);
-
-        console.log("ready to return")
-        console.log(prizes)
-        console.log("ready to return")
+        prizes = await checkIfRedeemable(prizes, no_of_games);
 
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', prizes.length)
@@ -161,8 +157,8 @@ async function checkIfRedeemable(prizes, no_of_games) {
         let canRedeem = false;
         let message = "";
 
-        let user_type = prize.userType.name;
-        let minGames = prize.userType.minGames;
+        let user_type = prize.UserType.name;
+        let minGames = prize.UserType.minGames;
 
         //if the user total games is greater than or equal to the user type min  games
         if (no_of_games >= minGames) canRedeem = true;
