@@ -3,27 +3,17 @@ const prisma = require('../config/prisma')
 
 const QuestionController = require('../controllers/question');
 const ChallengeController = require('../controllers/challenge');
-const {get_next_game, isGameValid} = require('../utils/isGameValid');
-const {checkGame} = require("../utils/check-game");
 
 const format = 'HH:mm:ss'
 
-
 function getNextGameTime(challengeEndTime) {
     //calculate the time for the next game
-    let timePlusThirty = moment().add(30, 'minutes').format("HH:mm:ss");
+    let timePlusThirty = moment().add(30, 'minutes')
     timePlusThirty = moment(timePlusThirty, format)
 
     let nextGame = null;
     //If the next game is before the end of the current challenge
     if (timePlusThirty.isBefore(challengeEndTime)) {
-        let date = moment();
-        timePlusThirty.set({
-            year: date.get('year'),
-            month: date.get('month'),
-            day: date.get('day')
-        });
-
         nextGame = new Date(timePlusThirty.format("YYYY-MM-DDTHH:mm:ss.000Z"));
     }
 
