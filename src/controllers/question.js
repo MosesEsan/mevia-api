@@ -104,10 +104,10 @@ exports.import = async (req, res) => {
 //Get random questions
 exports.random = async () => {
     try {
-        const questions = await prisma.$queryRaw`
-        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" ORDER BY RAND() LIMIT 3) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" ORDER BY RAND() LIMIT 3) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" ORDER BY RAND() LIMIT 3) `
+        let  questions = await prisma.$queryRaw`
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" ORDER BY RAND() LIMIT 4) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" ORDER BY RAND() LIMIT 4) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" ORDER BY RAND() LIMIT 2) `
 
         if (questions.length > 0) {
             let points_available = 0;
@@ -119,6 +119,7 @@ exports.random = async () => {
                 question["selected"] = null;
             });
 
+            shuffle(questions);
             return {success: true, data: {questions, points_available, time_available}}
         }
         else return {success: false, "message": "No Questions Available. Try Again Later"}
@@ -127,6 +128,14 @@ exports.random = async () => {
         throw error
     }
 }
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+}
+
 
 async function addToDatabase(row, levels) {
     const {text, choice1, choice2, choice3, choice4, answer, level, time, exported} = row;
