@@ -24,7 +24,9 @@ exports.index = async function (req, res) {
             if (idx < 3) top_leaders.push(user)
         })
 
-        res.status(200).json({success: true, data: {leaderboard, top_leaders, title: `Top leaders of the ${type}`}});
+        let data = {leaderboard, top_leaders, title: `Top leaders of the ${type}`, message: `The current reigning champions of the ${type}`}
+
+        res.status(200).json({success: true, data});
     } catch (error) {
         logger.error(error);
         res.status(500).json({error})
