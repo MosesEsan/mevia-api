@@ -18,13 +18,15 @@ async function isGameValid(game) {
         //if the game has been submitted and next game time is not available
         else if (game.submittedAt !== null && game.nextGameAt === null)
             message = "You have no new games left for this challenge.";
-        //if the game has not been submitted and next game time is available
-        else if (game.submittedAt === null && game.nextGameAt !== null){
-            is_valid = checkStillValid(game)
-            has_next_game = !is_valid
-            next_game_avail = !is_valid
-        }else{
-            is_valid = true;
+        //if the game has not been submitted and has a next game time
+        // else if (game.submittedAt === null && game.nextGameAt !== null){
+        //     is_valid = checkStillValid(game)
+        //     has_next_game = !is_valid
+        //     next_game_avail = !is_valid
+        // }
+        else{
+            // is_valid = true;
+            is_valid = false;
         }
     }
 
