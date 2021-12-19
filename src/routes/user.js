@@ -34,6 +34,9 @@ router.get('/:id/prizes/',  WeeklyPrize.user_prizes);
 //GAMES
 router.get('/:id/games/',  WeeklyGame.user_games);
 
+//USER RANK
+router.get('/:id/rank/',  User.get_user_rank);
+
 //READ
 router.get('/:id',  User.read);
 

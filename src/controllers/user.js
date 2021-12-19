@@ -24,6 +24,7 @@ exports.read = async function (req, res) {
     try {
         let user = await prisma.user.findUnique({where: {id: parseInt(id)}})
         user = await get_user_stats(user)
+        user = await get_user_rank(user)
         res.status(200).json(user);
 
     } catch (error) {
@@ -47,7 +48,7 @@ exports.update = async function (req, res) {
         const user = await prisma.user.update({where: { id: parseInt(id) }, data})
         res.status(200).json(user);
     } catch (error) {
-        res.status(500).json({message: error.message});
+        res.status(500).json({error});
     }
 };
 
@@ -118,6 +119,34 @@ const get_user_games_stats = async (user) => {
     }
 }
 
+const get_user_rank = async function (user) {
+    try {
+        const userRank = await prisma.$queryRaw`
+            SELECT * FROM (
+            SELECT @rank := @rank + 1 rank, user_id, username, image, points_obtained, points_available, success_rate, count as games_played, ceil(average) as average_score from (
+            SELECT game.userId as user_id, user.username, user.image, 
+            sum(pointsObtained) as points_obtained, sum(pointsAvailable) as points_available, 
+            (sum(pointsObtained)/sum(pointsAvailable)) * 100 as success_rate, 
+            count(game.id) as count, (sum(pointsObtained)/count(game.id)) as average 
+            FROM game 
+            LEFT JOIN user ON game.userId = user.id 
+            WHERE submittedAt IS NOT NULL 
+            GROUP BY user_id
+            ORDER BY success_rate desc) as f, (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
+
+        if (userRank.length > 0){
+            let user_rank = userRank[0]
+            user['rank'] = user_rank.rank;
+        }
+
+        return user;
+    } catch (error) {
+        console.log(error)
+        return user;
+    }
+}
+
+
 // @route GET api/user/{id}
 // @desc Returns a specific user
 // @access Public
@@ -140,4 +169,5 @@ exports.profile_image = async function (req, res) {
 
 exports.get_user_stats = get_user_stats;
 exports.get_user_games_stats = get_user_games_stats;
+exports.get_user_rank = get_user_rank;
 
