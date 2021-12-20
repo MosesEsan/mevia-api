@@ -123,16 +123,35 @@ const get_user_rank = async function (user) {
     try {
         const userRank = await prisma.$queryRaw`
             SELECT * FROM (
-            SELECT @rank := @rank + 1 rank, user_id, username, image, points_obtained, points_available, success_rate, count as games_played, ceil(average) as average_score from (
-            SELECT game.userId as user_id, user.username, user.image, 
-            sum(pointsObtained) as points_obtained, sum(pointsAvailable) as points_available, 
-            (sum(pointsObtained)/sum(pointsAvailable)) * 100 as success_rate, 
-            count(game.id) as count, (sum(pointsObtained)/count(game.id)) as average 
-            FROM game 
-            LEFT JOIN user ON game.userId = user.id 
-            WHERE submittedAt IS NOT NULL 
+        SELECT @rank := @rank + 1 rank, user_id, username, image, points, points_available, no_of_games_played, ceil(average) as average 
+        FROM
+        (
+            SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points, COALESCE(points_available, 0) AS points_available, 
+            COALESCE(no_of_games_played, 0) AS no_of_games_played,
+            (points_obtained/no_of_games_played) as average
+            FROM user
+            INNER JOIN 
+            (SELECT game.userId as user_id, user.username, user.image, SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
+            FROM game_question gq
+            INNER JOIN game  ON gq.gameId = game.id 
+            INNER JOIN question ON gq.questionId = question.id 
+            INNER JOIN question_type qt ON question.questionTypeId = qt.id
+            INNER JOIN user ON game.userId = user.id
+            WHERE game.submittedAt IS NOT NULL
             GROUP BY user_id
-            ORDER BY success_rate desc) as f, (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
+            ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id 
+            LEFT JOIN (
+            SELECT userId, COUNT(*) AS no_of_games_played
+            FROM game
+            WHERE game.submittedAt IS NOT NULL
+            GROUP BY userId) no_of_games_played ON no_of_games_played.userId = user.id
+            LEFT JOIN (
+            SELECT userId, SUM(game.pointsAvailable) as points_available
+            FROM game
+            WHERE game.submittedAt IS NOT NULL
+            GROUP BY userId) points_available ON points_available.userId = user.id
+            ORDER BY points desc, no_of_games_played desc
+        ) as f , (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
 
         if (userRank.length > 0){
             let user_rank = userRank[0]
