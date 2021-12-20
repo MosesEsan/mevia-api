@@ -94,8 +94,8 @@ exports.challenge_prizes = async function (req, res) {
         let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
         let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
-        start = moment(start).add(1, 'days') //the beginning of this week
-        end = moment(end).add(1, 'days') //the end of this week
+        start = moment(start) //the beginning of this week
+        end = moment(end) //the end of this week
         const challenge = await prisma.weeklyChallenge.findFirst({
             where: {
                 startDate: new Date(start),
@@ -109,7 +109,7 @@ exports.challenge_prizes = async function (req, res) {
                 }
             },
             orderBy: {createdAt: 'asc'}
-        })
+        });
 
         if (challenge && challenge.WeeklyPrize.length > 0) res.status(200).json(challenge.WeeklyPrize)
         else res.status(401).json({error: {message: "No Prizes available."}})
