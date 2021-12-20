@@ -20,7 +20,6 @@ exports.index = async function (req, res) {
         let top_leaders = []
         leaderboard.map((user, idx) => {
             user['id'] = idx + 1;
-            user['rank'] = idx + 1;
             if (idx < 3) top_leaders.push(user)
         })
 
@@ -60,6 +59,9 @@ async function runQuery(type) {
         }
 
         const leaderboard = await prisma.$queryRaw`
+        SELECT @rank := @rank + 1 rank, user_id, username, image, points, points_available, no_of_games_played, ceil(average) as average 
+        FROM
+        (
             SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points, COALESCE(points_available, 0) AS points_available, 
             COALESCE(no_of_games_played, 0) AS no_of_games_played,
             (points_obtained/no_of_games_played) as average
@@ -87,8 +89,8 @@ async function runQuery(type) {
             WHERE game.submittedAt IS NOT NULL
             AND game.initiatedAt BETWEEN ${new Date(start)} AND ${new Date(end)}
             GROUP BY userId) points_available ON points_available.userId = user.id
-            ORDER BY points desc, no_of_games_played desc 
-            LIMIT 10`;
+            ORDER BY points desc, no_of_games_played desc
+        ) as f , (SELECT @rank := 0) m LIMIT 10`;
 
         return leaderboard;
 
