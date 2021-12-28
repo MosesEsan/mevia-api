@@ -123,11 +123,13 @@ const get_user_rank = async function (user) {
     try {
         const userRank = await prisma.$queryRaw`
             SELECT * FROM (
-        SELECT @rank := @rank + 1 rank, user_id, username, image, points, points_available, no_of_games_played, ceil(average) as average 
+        SELECT @rank := @rank + 1 rank, user_id, username, image, points_obtained, points_available, no_of_games_played, correct_answers, wrong_answers, ceil(average) as average , (points_obtained/points_available) * 100 as success_rate
         FROM
         (
-            SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points, COALESCE(points_available, 0) AS points_available, 
+            SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points_obtained, COALESCE(points_available, 0) AS points_available, 
             COALESCE(no_of_games_played, 0) AS no_of_games_played,
+            COALESCE(correct_answers, 0) AS correct_answers,
+            COALESCE(wrong_answers, 0) AS wrong_answers,
             (points_obtained/no_of_games_played) as average
             FROM user
             INNER JOIN 
@@ -146,16 +148,28 @@ const get_user_rank = async function (user) {
             WHERE game.submittedAt IS NOT NULL
             GROUP BY userId) no_of_games_played ON no_of_games_played.userId = user.id
             LEFT JOIN (
+            SELECT userId, COUNT(*) AS correct_answers
+            FROM game_question gq
+            INNER JOIN game  ON gq.gameId = game.id 
+            WHERE game.submittedAt IS NOT NULL AND gq.correct is True
+            GROUP BY userId) correct_answers ON correct_answers.userId = user.id
+            LEFT JOIN (
+            SELECT userId, COUNT(*) AS wrong_answers
+            FROM game_question gq
+            INNER JOIN game  ON gq.gameId = game.id 
+            WHERE game.submittedAt IS NOT NULL AND gq.correct is False
+            GROUP BY userId) wrong_answers ON wrong_answers.userId = user.id
+            LEFT JOIN (
             SELECT userId, SUM(game.pointsAvailable) as points_available
             FROM game
             WHERE game.submittedAt IS NOT NULL
             GROUP BY userId) points_available ON points_available.userId = user.id
-            ORDER BY points desc, no_of_games_played desc
+            ORDER BY points_obtained desc, no_of_games_played desc
         ) as f , (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
 
         if (userRank.length > 0){
             let user_rank = userRank[0]
-            user['rank'] = user_rank.rank;
+            user = {...user, ...user_rank}
         }
 
         return user;

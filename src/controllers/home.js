@@ -55,16 +55,13 @@ exports.index = async function (req, res) {
             }
 
             leaderboard.map((user, idx) => {
-                // user['id'] = idx + 1;
-                user['rank'] = idx + 1;
+                user['id'] = idx + 1;
             })
-
 
             leaderboard_title = `Top leaders of the ${type}`
         } catch (error) {
             leaderboard_error = error
         }
-
 
         //Marketplace - MarketplaceCard
         let prizes = null;
