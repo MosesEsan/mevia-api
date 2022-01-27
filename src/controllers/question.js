@@ -161,6 +161,9 @@ exports.tournament_questions = async (tournament_mode_id= null) => {
 }
 
 function reformat(questions) {
+    console.log("===Questions")
+    console.log(questions)
+    console.log("===Questions")
     if (questions.length > 0) {
         let points_available = 0;
         let time_available = 0;
