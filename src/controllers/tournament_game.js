@@ -9,6 +9,10 @@ const {slugify} = require("../utils/slugify");
 
 async function saveGameQuestions(req, res, game, questions) {
     try {
+
+        console.log("QUESTIONS PASSED")
+        console.log(questions)
+        console.log("QUESTIONS PASSED")
         //create the game questions
         let formatted_questions = []
         questions.forEach((question) =>
