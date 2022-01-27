@@ -2,11 +2,14 @@ const auth = require('./auth');
 const home = require('./home');
 const question = require('./question');
 const question_types = require('./question-types');
+const category = require('./category');
 const weekly_prize = require('./weekly_prize');
 const game = require('./game');
 const challenge = require('./challenge');
+const tournament = require('./tournament');
 const user = require('./user');
 const prize = require('./prize');
+const admin_prize = require('./admin/prize');
 const leaderboard = require('./leaderboard');
 const notification = require('./notification');
 
@@ -30,16 +33,19 @@ module.exports = app => {
     app.use('/api/admin/user', user);
     app.use('/api/admin/question', question);
     app.use('/api/admin/questionTypes', question_types);
+    app.use('/api/admin/category', category);
     app.use('/api/admin/weeklyPrize', weekly_prize);
     app.use('/api/admin/challenge', challenge);
+    app.use('/api/admin/tournament', tournament);
     app.use('/api/admin/leaderboard', leaderboard);
-    app.use('/api/admin/prize', prize);
+    app.use('/api/admin/prize', admin_prize);
 
     //USER ROUTES
     app.use('/api/auth', auth);
     app.use('/api/home', authenticate, home);
     app.use('/api/user', authenticate, user);
     app.use('/api/challenge', authenticate,challenge);
+    app.use('/api/tournament', authenticate, tournament);
     app.use('/api/game', authenticate, game);
     app.use('/api/leaderboard', authenticate, leaderboard);
     app.use('/api/notification', authenticate, notification);
