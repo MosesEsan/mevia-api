@@ -144,6 +144,10 @@ const read = async function (req, res, game) {
             tournament_mode = game_question.TournamentGame.TournamentMode;
         }
 
+        console.log("qiuesrion")
+        console.log(game_question.question)
+        console.log("qiuesrion")
+
         let game_question_id = game_question.id;
         let {id, text, time, choice_one, choice_two, choice_three, choice_four, answer, questionType} = game_question.question;
         let {points} = questionType;
