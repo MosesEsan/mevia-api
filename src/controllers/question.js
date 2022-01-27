@@ -129,6 +129,54 @@ exports.random = async () => {
     }
 }
 
+//Get tournament questions
+exports.tournament_questions = async (tournament_mode_id= null) => {
+    try {
+        const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)}})
+        if (!mode) return {success: false, "message": "Mode does not exist!!"}
+
+        const categories = await prisma.tournamentCategory.findMany({
+            where: {tournamentId: mode.tournamentId},
+            include: {
+                QuestionCategory: true
+            }
+        })
+
+        let all_categories = []
+        for (let i = 0; i < categories.length; i++) {
+            let category = categories[i]
+            all_categories.push(category.QuestionCategory.id)
+        }
+
+        let  questions = await prisma.$queryRaw`
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.easy}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.intermediate}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.hard}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Bonus" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.bonus}) 
+        `
+        return reformat(questions);
+    } catch (error) {
+        return {success: false, "message": error.message}
+    }
+}
+
+function reformat(questions) {
+    if (questions.length > 0) {
+        let points_available = 0;
+        let time_available = 0;
+        questions.forEach((question) => {
+            points_available = points_available + question["points"]
+            time_available = time_available + question["time"]
+            question["choices"] = JSON.stringify([question["choice_one"], question["choice_two"], question["choice_three"], question["choice_four"]])
+            question["selected"] = null;
+        });
+
+        shuffle(questions);
+        return {success: true, data: {questions, points_available, time_available}}
+    }
+    else return {success: false, "message": "No Questions Available. Try Again Later"}
+}
+
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         let j = Math.floor(Math.random() * (i + 1));
