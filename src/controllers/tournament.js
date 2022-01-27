@@ -95,8 +95,57 @@ const check_tournament = async function (req, res) {
         for (let i = 0; i < tournaments.length; i++) {
             let tournament = tournaments[i];
             console.log(tournament)
+            console.log("tournament.startTime", tournament.start_time)
 
             if (tournament && tournament.TournamentPrize.length > 0) {
+                let format = 'hh:mm:ss'
+                let startTime = new moment(tournament.start_time);
+                startTime = startTime.format("HH:mm:ss");
+                startTime = moment(startTime, format)
+
+                let endTime = new moment(tournament.end_time);
+                let endTimeHours = endTime.format("HH:mm:ss");
+                endTime = moment(endTimeHours, format)
+
+                let today = moment()
+
+                tournament["is_tomorrow"] = false
+                //if the current time is between the start and end time and the current time is before the endtime
+                if (today.isBetween(startTime, endTime) && today.isBefore(endTime)){
+                    //    if the end time is in the future
+                    let time_left =  endTime.valueOf() - today.valueOf();
+                    tournament["avail"] = true
+                    tournament["time_left"] = time_left
+                    tournament["time_message"] = `Ends at ${endTime.format("h:mm A")}`
+                    console.log("games in progress")
+                    console.log(time_left)
+
+                    //if the current time is before the start
+                }else if (today.isBefore(startTime)){
+                    console.log("games have not started yet")
+                    let time_left = startTime.valueOf() - today.valueOf();
+                    console.log(time_left)
+                    tournament["avail"] = false
+                    tournament["time_left"] = time_left
+                    tournament["time_message"] = `Starts at ${startTime.format("h:mm A")}`
+
+                    //if the end time is before the current time
+                }else if (endTime.isBefore(today)){
+                    console.log("games have ended")
+
+                    let tomorrow = moment().add(1, "day");
+                    tomorrow.set({
+                        hour:   startTime.get('hour'),
+                        minute: startTime.get('minute'),
+                        second: startTime.get('second')
+                    });
+
+                    let time_left =  tomorrow.valueOf() - today.valueOf();
+                    tournament["avail"] = false
+                    tournament["time_left"] = time_left
+                    tournament["is_tomorrow"] = true
+                    tournament["time_message"] = `Tomorrow at ${startTime.format("h:mm A")}`
+                }
 
                 let modes = await formatMode(tournament.TournamentMode);
                 if (modes.length > 0) {
@@ -454,11 +503,6 @@ async function checkTournamentGame(user_id, tournament) {
     try {
         let next_game = null
         let new_game_avail = false;
-
-
-        console.log("hhhh")
-        console.log(tournament.id)
-        console.log(user_id)
 
         //Get the most recent game played for this tournament
         const game = await prisma.tournamentGame.findFirst({
