@@ -9,7 +9,7 @@ const challenge = require('./challenge');
 const tournament = require('./tournament');
 const user = require('./user');
 const prize = require('./prize');
-const admin_prize = require('./admin/prize');
+// const admin_prize = require('./admin/prize');
 const leaderboard = require('./leaderboard');
 const notification = require('./notification');
 
@@ -38,7 +38,7 @@ module.exports = app => {
     app.use('/api/admin/challenge', challenge);
     app.use('/api/admin/tournament', tournament);
     app.use('/api/admin/leaderboard', leaderboard);
-    app.use('/api/admin/prize', admin_prize);
+    // app.use('/api/admin/prize', admin_prize);
 
     //USER ROUTES
     app.use('/api/auth', auth);
