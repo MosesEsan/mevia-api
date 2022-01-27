@@ -12,7 +12,7 @@ async function saveGameQuestions(req, res, game, questions) {
         //create the game questions
         let formatted_questions = []
         questions.forEach((question) =>
-            formatted_questions.push({tournamentGameId: game.id, questionId: question.id}));
+            formatted_questions.push({tournamentGameId: game.id, questionId: question.id, time:0}));
 
         console.log("formatted_questions PASSED")
         console.log(formatted_questions)
