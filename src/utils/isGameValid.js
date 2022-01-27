@@ -4,42 +4,32 @@ const format = 'HH:mm:ss'
 
 async function isGameValid(game) {
     let is_valid = false;
+    let message = "";
+
     let has_next_game = false;
     let next_game_avail = false;
-    let message = "";
     let time_left = 0;
 
     if (game){
-        //if the game has been submitted and next game time is available
-        // if (game.submittedAt !== null && game.nextGameAt !== null){
+        //if there is a next game at time set,
+        // check if the game is ready (current time > = next_game_at)
         if (game.nextGameAt !== null){
             has_next_game = true;
             next_game_avail = checkNextGame(game)
-        }
-        //if the game has been submitted and next game time is not available
-        // else if (game.submittedAt !== null && game.nextGameAt === null)
-        else if (game.nextGameAt === null)
+        }else{
             message = "You have no new games left for this challenge.";
-        //if the game has not been submitted and has a next game time
-        // else if (game.submittedAt === null && game.nextGameAt !== null){
-        //     is_valid = checkStillValid(game)
-        //     has_next_game = !is_valid
-        //     next_game_avail = !is_valid
-        // }
-        else{
-            // is_valid = true;
-            is_valid = false;
         }
     }
 
-    return {has_next_game, next_game_avail, is_valid, time_left, message}
+    return {has_next_game, next_game_avail, time_left, is_valid, message}
 }
-
 
 function get_next_game(game) {
     let next_game = new moment(game.nextGameAt);
-    next_game = next_game.format("HH:mm:ss");
-    next_game = moment(next_game, format)
+    // next_game = next_game.format("HH:mm:ss");
+    // next_game = moment(next_game, format)
+
+    console.log(next_game)
 
     let check = moment()
     let message = `Next Game Starts At ${next_game}`
