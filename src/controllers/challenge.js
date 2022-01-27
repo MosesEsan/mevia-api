@@ -8,10 +8,10 @@ const {checkGame} = require("../utils/check-game");
 // @access Public
 exports.index = async (req, res) => {
     try {
-        const prizes = await prisma.weeklyChallenge.findMany()
+        const challenges = await prisma.weeklyChallenge.findMany()
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
-        res.set('X-Total-Count', prizes.length)
-        res.status(200).json(prizes)
+        res.set('X-Total-Count', challenges.length)
+        res.status(200).json(challenges)
     } catch (error) {
         throw error
     }
@@ -62,7 +62,7 @@ exports.update = async function (req, res) {
     }
 };
 
-// @route PUT api/challenge/check
+// @route GET api/challenge/check
 // @desc  checks if a challenge is avaialble
 // @access Public
 exports.check = async function (req, res) {
@@ -136,7 +136,7 @@ async function checkChallenges(user_id, weekly_challenge) {
                 year = check.format('YYYY'),
                 hour = startTime.format('HH'),
                 minutes = startTime.format('mm');
-            
+
 
             if (check.isBetween(startTime, endTime)) {
                 avail = true;

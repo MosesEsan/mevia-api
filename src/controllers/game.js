@@ -178,7 +178,6 @@ const read = async function (req, res, game, message) {
 exports.validate = async function (req, res) {
     const {game_id, questions} = req.body;
 
-    //create the game
     const game = await prisma.game.findFirst({where: {id: game_id}})
     if (!game) return res.status(404).json({success: false, error: {message: "Game does not exist!"}});
 

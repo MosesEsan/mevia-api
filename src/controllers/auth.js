@@ -5,8 +5,6 @@ const {generateJWT} = require('../utils/generateToken');
 const {twilio, VERIFICATION_SID} = require('../config/twilio');
 
 const UserController = require('../controllers/user');
-const {check} = require("express-validator");
-
 // @route POST api/auth/register
 // @desc Register user and sends a verification code
 // @access Public
@@ -51,7 +49,7 @@ exports.login = async (req, res) => {
 
 
 // @route GET api/verify/:token
-// @desc Verify token passed
+// @desc Verify code passed
 // @access Public
 exports.verify = async (req, res) => {
     let verificationResult;
@@ -84,7 +82,6 @@ exports.verify = async (req, res) => {
         logger.error(e);
         res.status(500).json({success: false, message: errMessage})
     }
-
 };
 
 // @route POST api/resend
@@ -117,7 +114,7 @@ async function sendVerificationCode(user, req, res) {
         res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
     } catch (error) {
         logger.error(error);
-        res.status(500).json({success: false, message: error.message})
+        res.status(500).json({error})
     }
 }
 
@@ -126,7 +123,7 @@ async function sendVerificationCode(user, req, res) {
 async function addPoints(user, req, res) {
     try {
         await prisma.userPoints.create({data: {
-                user_id: user.id,
+                userId: user.id,
                 points: 250
             }})
 

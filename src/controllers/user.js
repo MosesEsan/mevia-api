@@ -73,7 +73,7 @@ const get_user_stats = async (user) => {
         let no_of_games = game_points._count.id;
 
         const user_points = await prisma.userPoints.aggregate({
-            where: {user_id: parseInt(user.id)},
+            where: {userId: parseInt(user.id)},
             _sum: {
                 points: true,
             },

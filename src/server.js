@@ -7,8 +7,7 @@ const passport = require("passport");
 // Setting up port
 let PORT = process.env.PORT || 3001;
 
-//=== 1 - CREATE APP
-// Creating express app and configuring middleware needed for authentication
+//=== 1 - CREATE EXPRESS APP
 const app = express();
 
 app.use(cors());
