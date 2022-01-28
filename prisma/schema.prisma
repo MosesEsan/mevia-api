@@ -108,21 +108,22 @@ model Prize {
 }
 
 model Tournament {
-  id                 Int                  @id @default(autoincrement())
-  name               String
-  start_date         DateTime             @db.Date
-  end_date           DateTime             @db.Date
-  start_time         DateTime             @db.Time(3)
-  end_time           DateTime             @db.Time(3)
-  daily_points       Int
-  entry_fee          Int
-  max_players        Int
-  created_at         DateTime             @default(now())
-  TournamentMode     TournamentMode[]
-  TournamentUser     TournamentUser[]
-  TournamentGame     TournamentGame[]
-  TournamentPrize    TournamentPrize[]
-  TournamentCategory TournamentCategory[]
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  start_date          DateTime             @db.Date
+  end_date            DateTime             @db.Date
+  registration_closes DateTime
+  start_time          DateTime             @db.Time(3)
+  end_time            DateTime             @db.Time(3)
+  daily_points        Int
+  entry_fee           Int
+  max_players         Int
+  created_at          DateTime             @default(now())
+  TournamentMode      TournamentMode[]
+  TournamentUser      TournamentUser[]
+  TournamentGame      TournamentGame[]
+  TournamentPrize     TournamentPrize[]
+  TournamentCategory  TournamentCategory[]
 }
 
 model TournamentCategory {
@@ -201,7 +202,7 @@ model TournamentQuestion {
   TournamentGame   TournamentGame @relation(fields: [tournamentGameId], references: [id])
   tournamentGameId Int
 
-  time Int
+  time Int?
 
   question   Question @relation(fields: [questionId], references: [id])
   questionId Int
