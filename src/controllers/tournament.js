@@ -88,14 +88,11 @@ const check_tournament = async function (req, res) {
             },
             orderBy: {created_at: 'asc'}
         });
-        console.log(tournaments)
 
 
         const all_tournaments = []
         for (let i = 0; i < tournaments.length; i++) {
             let tournament = tournaments[i];
-            console.log(tournament)
-            console.log("tournament.startTime", tournament.start_time)
 
             if (tournament && tournament.TournamentPrize.length > 0) {
                 let format = 'hh:mm:ss'
@@ -117,22 +114,15 @@ const check_tournament = async function (req, res) {
                     tournament["avail"] = true
                     tournament["time_left"] = time_left
                     tournament["time_message"] = `Ends at ${endTime.format("h:mm A")}`
-                    console.log("games in progress")
-                    console.log(time_left)
-
                     //if the current time is before the start
                 }else if (today.isBefore(startTime)){
-                    console.log("games have not started yet")
                     let time_left = startTime.valueOf() - today.valueOf();
-                    console.log(time_left)
                     tournament["avail"] = false
                     tournament["time_left"] = time_left
                     tournament["time_message"] = `Starts at ${startTime.format("h:mm A")}`
 
                     //if the end time is before the current time
                 }else if (endTime.isBefore(today)){
-                    console.log("games have ended")
-
                     let tomorrow = moment().add(1, "day");
                     tomorrow.set({
                         hour:   startTime.get('hour'),
@@ -164,7 +154,6 @@ const check_tournament = async function (req, res) {
         }
         return res.status(200).json(all_tournaments)
     } catch (error) {
-        console.log(error)
         res.status(500).json({error: error.message})
     }
 };
@@ -202,18 +191,24 @@ exports.register_for_tournament = async function (req, res) {
                 tournamentId: parseInt(tournament_id)
             }
         })
-        if (check) return res.status(401).json({message: "You are already registered for this tournament."});
+        if (check) return res.status(401).json({type: "registered", message: "You are already registered for this tournament."});
 
-        // Create a new record for the user for this tournament
-        let tournament_user = await prisma.tournamentUser.create({
-            data: {
-                userId: user_id,
-                tournamentId: parseInt(tournament_id)
-            }
-        })
+        const today = moment();
+        let registrationCloses = new moment(tournament.registration_closes);
+        //Check if registration is closed
+        if (today.isBefore(registrationCloses)){
+            // Create a new record for the user for this tournament
+            let tournament_user = await prisma.tournamentUser.create({
+                data: {
+                    userId: user_id,
+                    tournamentId: parseInt(tournament_id)
+                }
+            })
 
-        return await deductPoints(req, res, tournament, tournament_user)
-
+            return await deductPoints(req, res, tournament, tournament_user)
+        }else if (registrationCloses.isBefore(today)){
+            return res.status(401).json({type: "closed", message: "Registration for this tournament has closed."});
+        }
     } catch (error) {
         res.status(500).json(error)
     }
@@ -248,7 +243,6 @@ exports.tournament_leaderboard = async function (req, res) {
 
 async function runQuery(type) {
     try {
-        console.log(type)
         let leaderboard = null;
         if (type && type === "points") {
             leaderboard = await prisma.$queryRaw`
@@ -551,4 +545,4 @@ async function push_update(tournament_id) {
 }
 
 exports.checkTournamentGame = checkTournamentGame;
-exports.get_available_points = get_available_points;
+exports.getAvailablePoints = get_available_points;
