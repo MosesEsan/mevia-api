@@ -13,21 +13,14 @@ async function saveGameQuestions(req, res, game, questions) {
         let formatted_questions = []
         questions.forEach((question) =>
             formatted_questions.push({tournamentGameId: game.id, questionId: question.id, time:0}));
-
-        console.log("formatted_questions PASSED")
-        console.log(formatted_questions)
-        console.log("formatted_questions PASSED")
         //insert into database
         await prisma.tournamentQuestion.createMany({data: formatted_questions, skipDuplicates: true})
 
-        console.log("passed it")
         await push_points(game.tournamentId)
 
         await read(req, res, game, "New Tournament Game created.")
 
     } catch (error) {
-        console.log(error)
-
         await prisma.tournamentGame.delete({where: {id: game.id}})
 
         await push_points(game.tournamentId)
@@ -41,7 +34,7 @@ async function push_points(tournament_id){
     try {
         let tournament = await prisma.tournament.findUnique({where: {id:parseInt(tournament_id)}})
         if (tournament){
-            let result = await TournamentController.get_available_points(tournament_id)
+            let result = await TournamentController.getAvailablePoints(tournament_id)
             await pusher.trigger(`tour_${tournament.id}_${slugify(tournament.name)}`, "points-update",   JSON.stringify(result));
         }
     }catch (error) {
@@ -62,18 +55,61 @@ exports.create = async function (req, res) {
     const user_check = await prisma.tournamentUser.findFirst({where: {userId: user_id, tournamentId:parseInt(tournament_id)}})
     if (!user_check) return res.status(401).json({error: {message: "You are not registered for this tournament."}});
 
-    //Check if there is a game available for this user
-    tournament = await TournamentController.checkTournamentGame(user_id, tournament);
+    //check the mode exists
+    const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)}})
+    if (!mode) return res.status(401).json({success: false, "message": "Mode does not exist!!"})
 
-    //if new game available is available, creates new game
-    if (tournament.new_game_avail === true) return await store(req, res, tournament, tournament_mode_id)
-    else {
-        let errorMessage = "You have run put of games for the day."
-        if (tournament.next_game !== null) errorMessage = tournament.next_game.message
-        return res.status(401).json({message: errorMessage});
+    //check the points required for this mode
+    let modePoints = await checkModePoints(mode)
+    console.log(modePoints)
+    if (!modePoints) return res.status(401).json({message: "Something went wrong. Please try again later."});
+
+    //check the points remaining for tournament
+    let {points_remaining} = await TournamentController.getAvailablePoints(tournament_id);
+    console.log(points_remaining)
+
+    if (points_remaining < modePoints){
+        return res.status(401).json({success: false, "message": "There isn't enough points available for this mode. Please pick another mode."})
+    }else{
+        //Check if there is a game available for this user
+        tournament = await TournamentController.checkTournamentGame(user_id, tournament);
+
+        //if new game available is available, creates new game
+        if (tournament.new_game_avail === true) return await store(req, res, tournament, tournament_mode_id)
+        else {
+            let errorMessage = "You have run put of games for the day."
+            if (tournament.next_game !== null) errorMessage = tournament.next_game.message
+            return res.status(401).json({message: errorMessage});
+        }
     }
 }
 
+
+async function checkModePoints(mode) {
+    try {
+        //Get levels
+        const questionTypes = await prisma.questionType.findMany()
+        let levels = {}
+        questionTypes.forEach((obj) => levels[obj.name] = obj.points);
+
+        let keys = Object.keys(levels)
+        let {easy, intermediate, hard, bonus} = mode;
+
+        let points = 0;
+        if (keys.includes("easy")) points = points + (parseInt(easy) * levels["easy"])
+        if (keys.includes("intermediate")) points = points + (parseInt(intermediate) * levels["intermediate"])
+        if (keys.includes("hard")) points = points + (parseInt(hard) * levels["hard"])
+        if (keys.includes("bonus")) points = points + (parseInt(bonus) * levels["bonus"])
+
+        return points;
+
+    } catch (error) {
+        console.log(error)
+        return null;
+    }
+
+
+}
 //Create
 const store = async function (req, res, tournament, tournament_mode_id) {
     let user_id = req.user.id;
@@ -147,10 +183,6 @@ const read = async function (req, res, game) {
             all_prizes = game_question.TournamentGame.Tournament.TournamentPrize;
             tournament_mode = game_question.TournamentGame.TournamentMode;
         }
-
-        console.log("qiuesrion")
-        console.log(game_question.question)
-        console.log("qiuesrion")
 
         let game_question_id = game_question.id;
         let {id, text, time, choice_one, choice_two, choice_three, choice_four, answer, questionType} = game_question.question;
