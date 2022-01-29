@@ -388,7 +388,6 @@ async function runQuery(type) {
                 "WHERE tg.submitted_at IS NOT NULL " +
                 "GROUP BY user_id) points_available ON points_available.user_id = user.id " +
                 "WHERE points_available.user_id NOT IN (SELECT user_id FROM("+best_points_query+") as bp) " +
-                "AND points_available.user_id NOT IN (SELECT user_id FROM("+best_time_query+") as bt) " +
                 "ORDER BY success_rate desc" +
                 ") as r "
 
