@@ -32,7 +32,7 @@ router.post('/register', [
 //CHECK POINTS
 router.post('/check_points', [
     check('tournament_id').isNumeric().not().isEmpty().withMessage('tournament id is required'),
-], validate,Tournament.check_available_points);
+], validate,Tournament.check_tournament_stats);
 
 //CHECK
 router.post('/new', [

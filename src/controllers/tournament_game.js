@@ -61,7 +61,6 @@ exports.create = async function (req, res) {
 
     //check the points required for this mode
     let modePoints = await checkModePoints(mode)
-    console.log(modePoints)
     if (!modePoints) return res.status(401).json({message: "Something went wrong. Please try again later."});
 
     //check the points remaining for tournament
@@ -72,7 +71,8 @@ exports.create = async function (req, res) {
         return res.status(401).json({success: false, "message": "There isn't enough points available for this mode. Please pick another mode."})
     }else{
         //Check if there is a game available for this user
-        tournament = await TournamentController.checkTournamentGame(user_id, tournament);
+        let tournament_game_check = await TournamentController.checkTournamentGame(user_id, tournament.id);
+        tournament = {...tournament, ...tournament_game_check}
 
         //if new game available is available, creates new game
         if (tournament.new_game_avail === true) return await store(req, res, tournament, tournament_mode_id)

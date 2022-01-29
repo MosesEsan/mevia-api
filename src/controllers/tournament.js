@@ -95,47 +95,9 @@ const check_tournament = async function (req, res) {
             let tournament = tournaments[i];
 
             if (tournament && tournament.TournamentPrize.length > 0) {
-                let format = 'hh:mm:ss'
-                let startTime = new moment(tournament.start_time);
-                startTime = startTime.format("HH:mm:ss");
-                startTime = moment(startTime, format)
+                let tournament_active = check_tournament_active(tournament)
+                tournament = {...tournament, ...tournament_active}
 
-                let endTime = new moment(tournament.end_time);
-                let endTimeHours = endTime.format("HH:mm:ss");
-                endTime = moment(endTimeHours, format)
-
-                let today = moment()
-
-                tournament["is_tomorrow"] = false
-                //if the current time is between the start and end time and the current time is before the endtime
-                if (today.isBetween(startTime, endTime) && today.isBefore(endTime)){
-                    //    if the end time is in the future
-                    let time_left =  endTime.valueOf() - today.valueOf();
-                    tournament["avail"] = true
-                    tournament["time_left"] = time_left
-                    tournament["time_message"] = `Ends at ${endTime.format("h:mm A")}`
-                    //if the current time is before the start
-                }else if (today.isBefore(startTime)){
-                    let time_left = startTime.valueOf() - today.valueOf();
-                    tournament["avail"] = false
-                    tournament["time_left"] = time_left
-                    tournament["time_message"] = `Starts at ${startTime.format("h:mm A")}`
-
-                    //if the end time is before the current time
-                }else if (endTime.isBefore(today)){
-                    let tomorrow = moment().add(1, "day");
-                    tomorrow.set({
-                        hour:   startTime.get('hour'),
-                        minute: startTime.get('minute'),
-                        second: startTime.get('second')
-                    });
-
-                    let time_left =  tomorrow.valueOf() - today.valueOf();
-                    tournament["avail"] = false
-                    tournament["time_left"] = time_left
-                    tournament["is_tomorrow"] = true
-                    tournament["time_message"] = `Tomorrow at ${startTime.format("h:mm A")}`
-                }
 
                 let modes = await formatMode(tournament.TournamentMode);
                 if (modes.length > 0) {
@@ -160,8 +122,54 @@ const check_tournament = async function (req, res) {
 exports.check_tournament = check_tournament;
 
 
-// @route POST api/tournament/register
-// @desc Add a new tournament
+function check_tournament_active(tournament) {
+    let format = 'hh:mm:ss'
+    let startTime = new moment(tournament.start_time);
+    startTime = startTime.format("HH:mm:ss");
+    startTime = moment(startTime, format)
+
+    let endTime = new moment(tournament.end_time);
+    let endTimeHours = endTime.format("HH:mm:ss");
+    endTime = moment(endTimeHours, format)
+
+    let today = moment()
+
+    let avail = false;
+    let is_tomorrow = false;
+    let time_left = null;
+    let time_message = "null";
+
+    //if the current time is between the start and end time and the current time is before the endtime
+    if (today.isBetween(startTime, endTime) && today.isBefore(endTime)) {
+        //   if the end time is in the future
+        avail = true
+        time_left = endTime.valueOf() - today.valueOf();
+        time_message = `Ends at ${endTime.format("h:mm A")}`
+        //if the current time is before the start
+    } else if (today.isBefore(startTime)) {
+        time_left = startTime.valueOf() - today.valueOf();
+        time_message = `Starts at ${startTime.format("h:mm A")}`
+        //if the end time is before the current time
+    } else if (endTime.isBefore(today)) {
+        let tomorrow = moment().add(1, "day");
+        tomorrow.set({
+            hour: startTime.get('hour'),
+            minute: startTime.get('minute'),
+            second: startTime.get('second')
+        });
+
+        is_tomorrow = true
+        time_left = tomorrow.valueOf() - today.valueOf();
+        time_message = `Tomorrow at ${startTime.format("h:mm A")}`
+    }
+
+    let result = {avail, is_tomorrow, time_left, time_message};
+
+    return result;
+}
+
+// @route POST api/tournament/
+// @desc
 // @access Public
 exports.check_available_points = async function (req, res) {
     try {
@@ -169,6 +177,36 @@ exports.check_available_points = async function (req, res) {
 
         let result = await get_available_points(tournament_id)
         return res.status(200).json(result)
+
+    } catch (error) {
+        res.status(500).json(error)
+    }
+}
+
+// @route POST api/tournament/
+// @desc
+// @access Public
+exports.check_tournament_stats = async function (req, res) {
+    try {
+        const {tournament_id} = req.body;
+        let user_id = req.user.id;
+
+        let tournament = await prisma.tournament.findFirst({where: {id: parseInt(tournament_id)}});
+        //Check the tournament is active (now is between the start time and end time)
+        let tournament_active = check_tournament_active(tournament)
+
+        //Get the available points
+        let available_points = await get_available_points(tournament.id)
+
+        //Check if there is a game available for this user
+        let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
+        tournament_active['next_game'] = tournament_game_check.next_game;
+
+        if (tournament_active.avail === true) {
+            tournament_active['avail'] = tournament_game_check.new_game_avail;
+        }
+
+        return res.status(200).json({...tournament_active, ...available_points})
 
     } catch (error) {
         res.status(500).json(error)
@@ -191,12 +229,15 @@ exports.register_for_tournament = async function (req, res) {
                 tournamentId: parseInt(tournament_id)
             }
         })
-        if (check) return res.status(401).json({type: "registered", message: "You are already registered for this tournament."});
+        if (check) return res.status(401).json({
+            type: "registered",
+            message: "You are already registered for this tournament."
+        });
 
         const today = moment();
         let registrationCloses = new moment(tournament.registration_closes);
         //Check if registration is closed
-        if (today.isBefore(registrationCloses)){
+        if (today.isBefore(registrationCloses)) {
             // Create a new record for the user for this tournament
             let tournament_user = await prisma.tournamentUser.create({
                 data: {
@@ -206,7 +247,7 @@ exports.register_for_tournament = async function (req, res) {
             })
 
             return await deductPoints(req, res, tournament, tournament_user)
-        }else if (registrationCloses.isBefore(today)){
+        } else if (registrationCloses.isBefore(today)) {
             return res.status(401).json({type: "closed", message: "Registration for this tournament has closed."});
         }
     } catch (error) {
@@ -244,8 +285,54 @@ exports.tournament_leaderboard = async function (req, res) {
 async function runQuery(type) {
     try {
         let leaderboard = null;
+
+
+
+
+        let top_users =
+            "SELECT user_id FROM(" +
+            "SELECT * FROM(" +
+            "SELECT user_id, COUNT(*) AS no_of_games_played " +
+            "FROM tournament_game tg " +
+            "WHERE tg.submitted_at IS NOT NULL " +
+            "GROUP BY user_id) as e WHERE no_of_games_played > 2) as tu"
+
+
+        let best_points_query =
+            "SELECT * FROM(" +
+            "SELECT tournament_game.user_id as user_id, user.username, user.image, SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained " +
+            "FROM tournament_question gq " +
+            "INNER JOIN tournament_game ON gq.tournamentGameId = tournament_game.id " +
+            "INNER JOIN question ON gq.questionId = question.id " +
+            "INNER JOIN question_type qt ON question.questionTypeId = qt.id " +
+            "INNER JOIN user ON tournament_game.user_id = user.id " +
+            "WHERE tournament_game.submitted_at IS NOT NULL " +
+            "GROUP BY user_id " +
+            "ORDER BY points_obtained desc " +
+            "LIMIT 1) as e"
+
+        // let best_points_user =  await prisma.$queryRawUnsafe(best_points_query)
+
+        let best_time_query =
+            "SELECT * FROM(" +
+            "SELECT tournament_game.user_id, user.username, user.image, COUNT(tq.id) as questions_answered, SUM(tq.time) as time_taken, SUM(tq.time)/(COUNT(tq.id)) as average_time_per_question " +
+            "FROM tournament_question tq " +
+            "INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id " +
+            "INNER JOIN user ON tournament_game.user_id = user.id " +
+            "WHERE tq.correct IS NOT NULL AND tournament_game.user_id " +
+            "NOT IN (SELECT user_id FROM("+best_points_query+") as bt) " +
+            "GROUP BY user_id " +
+            "ORDER BY average_time_per_question asc " +
+            "LIMIT 10" +
+            ") as g WHERE g.user_id IN ("+top_users+")"
+
+        // let best_time_user =  await prisma.$queryRawUnsafe(best_time_query)
+
+
+
         if (type && type === "points") {
-            leaderboard = await prisma.$queryRaw`
+            leaderboard = await prisma.$queryRaw`SELECT * FROM(
+
         SELECT @rank := @rank + 1 rank, user_id, username, image, points, points_available, ceil((points/points_available) * 100) as success_rate, no_of_games_played, ceil(average) as average 
         FROM
         (
@@ -274,77 +361,38 @@ async function runQuery(type) {
             WHERE tg.submitted_at IS NOT NULL
             GROUP BY user_id) points_available ON points_available.user_id = user.id
             ORDER BY points desc, no_of_games_played desc
-        ) as f , (SELECT @rank := 0) m LIMIT 10`
+        ) as f , (SELECT @rank := 0) m LIMIT 10
+        ) as r
+       WHERE user_id IN (
+       SELECT user_id From(SELECT user_id, COUNT(*) AS no_of_games_played FROM tournament_game tg WHERE tg.submitted_at IS NOT NULL GROUP BY user_id) as e WHERE no_of_games_played > 2)`
         } else if (type && type === "time") {
-            leaderboard = await prisma.$queryRaw`
-            SELECT tournament_game.user_id, user.username, user.image, COUNT(tq.id) as questions_answered, SUM(tq.time) as time_taken, SUM(tq.time)/(COUNT(tq.id)) as average_time_per_question
-            FROM tournament_question tq
-            INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id 
-            INNER JOIN user ON tournament_game.user_id = user.id
-            WHERE tq.correct IS NOT NULL
-            
-            AND tournament_game.user_id NOT IN (
-                SELECT user_id FROM(
-                    SELECT tournament_game.user_id as user_id, user.username, user.image, 
-                    SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
-                    FROM tournament_question gq
-                    INNER JOIN tournament_game ON gq.tournamentGameId = tournament_game.id 
-                    INNER JOIN question ON gq.questionId = question.id 
-                    INNER JOIN question_type qt ON question.questionTypeId = qt.id
-                    INNER JOIN user ON tournament_game.user_id = user.id
-                    WHERE tournament_game.submitted_at IS NOT NULL
-                    GROUP BY user_id
-                    ORDER BY points_obtained desc LIMIT 1) as e
-            ) GROUP BY user_id LIMIT 10`
+            leaderboard =  await prisma.$queryRawUnsafe(best_time_query)
         } else if (type && type === "success") {
-            leaderboard = await prisma.$queryRaw`
-            SELECT user.id as user_id, user.username, user.image, points_obtained, points_available, 
-            (points_obtained/points_available) as average_points,
-            ((points_obtained/points_available) * 100) as success_rate
-            FROM user
-            INNER JOIN 
-            (SELECT tournament_game.user_id as user_id, user.username, user.image, SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
-            FROM tournament_question gq
-            INNER JOIN tournament_game ON gq.tournamentGameId = tournament_game.id 
-            INNER JOIN question ON gq.questionId = question.id 
-            INNER JOIN question_type qt ON question.questionTypeId = qt.id
-            INNER JOIN user ON tournament_game.user_id = user.id
-            WHERE tournament_game.submitted_at IS NOT NULL
-            GROUP BY user_id
-            ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id 
-            LEFT JOIN (
-            SELECT user_id, SUM(tg.points_available) as points_available
-            FROM tournament_game tg
-            WHERE tg.submitted_at IS NOT NULL
-            GROUP BY user_id) points_available ON points_available.user_id = user.id
-            
-            WHERE points_available.user_id NOT IN ( 
-                SELECT user_id FROM(
-SELECT tournament_game.user_id, user.username, user.image, COUNT(tq.id) as questions_answered, SUM(tq.time) as time_taken, SUM(tq.time)/(COUNT(tq.id)) as average_time_per_question
-            FROM tournament_question tq
-            INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id 
-            INNER JOIN user ON tournament_game.user_id = user.id
-           WHERE tq.correct IS NOT NULL
-            
-            AND tournament_game.user_id NOT IN (
-                SELECT user_id FROM(
-                    SELECT tournament_game.user_id as user_id, user.username, user.image, 
-                    SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
-                    FROM tournament_question gq
-                    INNER JOIN tournament_game ON gq.tournamentGameId = tournament_game.id 
-                    INNER JOIN question ON gq.questionId = question.id 
-                    INNER JOIN question_type qt ON question.questionTypeId = qt.id
-                    INNER JOIN user ON tournament_game.user_id = user.id
-                    WHERE tournament_game.submitted_at IS NOT NULL
-                    GROUP BY user_id
-                    ORDER BY points_obtained desc LIMIT 1
-                    ) as e
-            ) GROUP BY user_id LIMIT 1) as f
-            ) 
-            
-            ORDER BY success_rate desc
-            `
 
+            let success_query = "SELECT * FROM(" +
+                "SELECT user.id as user_id, user.username, user.image, points_obtained, points_available,  (points_obtained/points_available) as average_points, ((points_obtained/points_available) * 100) as success_rate " +
+                "FROM user " +
+                "INNER JOIN " +
+                "(SELECT tournament_game.user_id as user_id, user.username, user.image, SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained " +
+                "FROM tournament_question gq " +
+                "INNER JOIN tournament_game ON gq.tournamentGameId = tournament_game.id " +
+                "INNER JOIN question ON gq.questionId = question.id " +
+                "INNER JOIN question_type qt ON question.questionTypeId = qt.id " +
+                "INNER JOIN user ON tournament_game.user_id = user.id " +
+                "WHERE tournament_game.submitted_at IS NOT NULL " +
+                "GROUP BY user_id " +
+                "ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id " +
+                "LEFT JOIN (" +
+                "SELECT user_id, SUM(tg.points_available) as points_available " +
+                "FROM tournament_game tg " +
+                "WHERE tg.submitted_at IS NOT NULL " +
+                "GROUP BY user_id) points_available ON points_available.user_id = user.id " +
+                "WHERE points_available.user_id NOT IN (SELECT user_id FROM("+best_points_query+") as bp) " +
+                "AND points_available.user_id NOT IN (SELECT user_id FROM("+best_time_query+") as bt) " +
+                "ORDER BY success_rate desc" +
+                ") as r "
+
+            leaderboard = await prisma.$queryRawUnsafe(success_query)
         }
 
         return leaderboard;
@@ -471,6 +519,7 @@ async function formatMode(modes) {
 
 }
 
+
 async function checkTournamentRegistration(user_id, tournament) {
     try {
         //Check if the user has already registered for this tournament
@@ -480,7 +529,8 @@ async function checkTournamentRegistration(user_id, tournament) {
         if (check) {
             //If user is registered, check if they have any game avaialable
             try {
-                tournament = await checkTournamentGame(user_id, tournament);
+                let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
+                tournament = {...tournament, ...tournament_game_check}
             } catch (error) {
                 console.log(error)
             }
@@ -493,7 +543,7 @@ async function checkTournamentRegistration(user_id, tournament) {
     }
 }
 
-async function checkTournamentGame(user_id, tournament) {
+async function checkTournamentGame(user_id, tournament_id) {
     try {
         let next_game = null
         let new_game_avail = false;
@@ -501,8 +551,9 @@ async function checkTournamentGame(user_id, tournament) {
         //Get the most recent game played for this tournament
         const game = await prisma.tournamentGame.findFirst({
             where: {
-                tournamentId: tournament.id,
+                tournamentId: tournament_id,
                 userId: user_id,
+                initiatedAt: new Date(moment()),
             },
             orderBy: {
                 initiatedAt: "desc"
@@ -522,10 +573,7 @@ async function checkTournamentGame(user_id, tournament) {
             next_game = get_next_game(game)
         }
 
-        tournament['new_game_avail'] = new_game_avail
-        tournament['next_game'] = next_game
-
-        return tournament;
+        return {new_game_avail, next_game};
     } catch (error) {
         throw error
     }
