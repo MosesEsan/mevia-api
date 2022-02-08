@@ -42,7 +42,7 @@ exports.create = async function (req, res) {
     let user_id = req.user.id;
     const challenge = await ChallengeController.checkWeeklyChallenge();
 
-    if (challenge && challenge.WeeklyPrize.length > 0){
+    // if (challenge && challenge.WeeklyPrize.length > 0){
         //Before creating a game check if the available challenge times
         let result = await ChallengeController.checkChallenges(user_id, challenge)
 
@@ -66,9 +66,9 @@ exports.create = async function (req, res) {
         else {
             res.status(200).json(result)
         }
-    }else{
-        res.status(401).json({error: {message: "No Challenges available."}})
-    }
+    // }else{
+    //     res.status(401).json({error: {message: "No Challenges available."}})
+    // }
 }
 
 //Create

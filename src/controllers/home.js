@@ -31,11 +31,11 @@ exports.index = async function (req, res) {
         let challenge_error = null;
         try {
             const weekly_challenge = await ChallengeController.checkWeeklyChallenge();
-            if (weekly_challenge && weekly_challenge.WeeklyPrize.length > 0){
+            // if (weekly_challenge && weekly_challenge.WeeklyPrize.length > 0){
                 challenge = await ChallengeController.checkChallenges(user_id, weekly_challenge);
-            }else{
-                challenge_error = {error: {message: "No Challenges available."}}
-            }
+            // }else{
+            //     challenge_error = {error: {message: "No Challenges available."}}
+            // }
         } catch (error) {
             challenge_error = error
         }

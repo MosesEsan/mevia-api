@@ -68,13 +68,13 @@ exports.update = async function (req, res) {
 exports.check = async function (req, res) {
     try {
         const challenge = await checkWeeklyChallenge();
-        if (challenge && challenge.WeeklyPrize.length > 0){
+        // if (challenge && challenge.WeeklyPrize.length > 0){
             let user_id = req.user.id;
             const result = await checkChallenges(user_id, challenge);
             return res.status(200).json(result)
-        }else{
-            res.status(401).json({error: {message: "No Challenges available."}})
-        }
+        // }else{
+        //     res.status(401).json({error: {message: "No Challenges available."}})
+        // }
     } catch (error) {
         res.status(500).json({error})
     }
@@ -91,8 +91,8 @@ async function checkWeeklyChallenge() {
 
     return await prisma.weeklyChallenge.findFirst({
         where: {
-            startDate: new Date(start),
-            endDate: {lte: new Date(end)},
+            // startDate: new Date(start),
+            // endDate: {lte: new Date(end)},
         },
         include: {WeeklyPrize: true},
         orderBy: {createdAt: 'asc'}
