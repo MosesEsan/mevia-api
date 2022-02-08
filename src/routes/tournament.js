@@ -11,7 +11,7 @@ const Leaderboard = require("../controllers/leaderboard");
 const router = express.Router();
 
 // //INDEX
-router.get('/', Tournament.index);
+// router.get('/', Tournament.index);
 
 //STORE
 router.post('/', [
@@ -33,6 +33,11 @@ router.post('/register', [
 router.post('/check_points', [
     check('tournament_id').isNumeric().not().isEmpty().withMessage('tournament id is required'),
 ], validate,Tournament.check_tournament_stats);
+
+//ACTIVITY
+router.post('/activity', [
+    check('tournament_id').isNumeric().not().isEmpty().withMessage('tournament id is required'),
+], validate,TournamentGame.activity);
 
 //CHECK
 router.post('/new', [

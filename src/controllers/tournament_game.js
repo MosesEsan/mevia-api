@@ -3,9 +3,9 @@ const prisma = require('../config/prisma')
 const QuestionController = require('../controllers/question');
 const TournamentController = require('../controllers/tournament');
 
-const {getNextGameTime, checkAnswers, getNextTournamentGameTime} = require("../utils/check-game");
+const {checkAnswers, getNextTournamentGameTime} = require("../utils/check-game");
 const pusher = require("../config/pusher");
-const {slugify} = require("../utils/slugify");
+const {slugify, shuffle} = require("../utils/slugify");
 
 async function saveGameQuestions(req, res, game, questions) {
     try {
@@ -16,26 +16,26 @@ async function saveGameQuestions(req, res, game, questions) {
         //insert into database
         await prisma.tournamentQuestion.createMany({data: formatted_questions, skipDuplicates: true})
 
-        await push_points(game.tournamentId)
+        await push_points(game.tournamentId, req.user.id)
 
         await read(req, res, game, "New Tournament Game created.")
 
     } catch (error) {
         await prisma.tournamentGame.delete({where: {id: game.id}})
 
-        await push_points(game.tournamentId)
+        await push_points(game.tournamentId, req.user.id)
 
         res.status(500).json(error)
     }
 }
 
 // POINTS UPDATE
-async function push_points(tournament_id){
+async function push_points(tournament_id, user_id){
     try {
         let tournament = await prisma.tournament.findUnique({where: {id:parseInt(tournament_id)}})
         if (tournament){
-            let result = await TournamentController.getAvailablePoints(tournament_id)
-            await pusher.trigger(`tour_${tournament.id}_${slugify(tournament.name)}`, "points-update",   JSON.stringify(result));
+            let result = await TournamentController.checkTournamentStats(tournament_id, user_id)
+            await pusher.trigger(`tour_${tournament.id}_${slugify(tournament.name)}`, "points-update",  JSON.stringify(result));
         }
     }catch (error) {
         console.log(error)
@@ -110,6 +110,7 @@ async function checkModePoints(mode) {
 
 
 }
+
 //Create
 const store = async function (req, res, tournament, tournament_mode_id) {
     let user_id = req.user.id;
@@ -189,7 +190,8 @@ const read = async function (req, res, game) {
         let {points} = questionType;
 
         let formatted_question = {game_question_id, id, text, time, answer, points, selected: null}
-        formatted_question["choices"] = JSON.stringify([choice_one, choice_two, choice_three,choice_four])
+        let choices = [choice_one, choice_two, choice_three,choice_four]
+        formatted_question["choices"] = JSON.stringify(shuffle(choices))
 
         game_questions_formatted.push(formatted_question)
         index++;
@@ -202,12 +204,56 @@ const read = async function (req, res, game) {
     });
 
     game['tournament'] = tournament;
-    game['questions'] = game_questions_formatted;
+    game['questions'] = shuffle(game_questions_formatted);
     game['prizes'] = prizes;
     game['tournament_mode'] = tournament_mode;
 
     res.status(200).json(game)
 }
+
+
+// @route POST api/tournament/
+// @desc
+// @access Public
+exports.activity = async function (req, res) {
+    try {
+        const {tournament_id} = req.body;
+        const games = await prisma.tournamentGame.findMany({
+            where: {
+                tournamentId: parseInt(tournament_id),
+                NOT: {submittedAt: null}
+            },
+            select: {
+                pointsObtained: true,
+                submittedAt: true,
+                User: {
+                    select: {
+                        id:true,
+                        username:true,
+                        image:true,
+                    }
+                },
+                TournamentMode: {
+                    select: {
+                        name:true
+                    }
+                },
+            }
+        })
+
+        let activities = []
+        games.forEach((game) => {
+            let {pointsObtained, submittedAt, User:{id, username, image}, TournamentMode:{name}} = game;
+            let activity = {id, username, image, mode:name, pointsObtained, date:submittedAt}
+            activities.push(activity)
+        });
+
+        return res.status(200).json(activities)
+    } catch (error) {
+        return res.status(500).json(error)
+    }
+}
+
 
 
 exports.validate = async function (req, res) {
@@ -234,14 +280,14 @@ exports.validate = async function (req, res) {
                 }
             })
 
-            await push_points(updatedGame.tournamentId)
+            await push_points(updatedGame.tournamentId, req.user.id)
 
             res.status(200).json({success: true, game: updatedGame, message: "Congratulations"})
         } catch (error) {
-            res.status(500).json({error})
+            res.status(500).json(error)
         }
     } else {
-        res.status(404).json({error: {message: "This game has previously been validated!"}});
+        res.status(404).json({message: "This game has previously been validated!"});
     }
 }
 

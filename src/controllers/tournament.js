@@ -4,19 +4,6 @@ const {isGameValid, get_next_game} = require("../utils/isGameValid");
 const pusher = require("../config/pusher");
 const {slugify} = require("../utils/slugify");
 
-// @route GET api/tournaments
-// @desc Returns all tournaments
-// @access Public
-exports.index = async (req, res) => {
-    try {
-        const tournaments = await prisma.tournament.findMany()
-        res.set('Access-Control-Expose-Headers', 'X-Total-Count')
-        res.set('X-Total-Count', tournaments.length)
-        res.status(200).json(tournaments)
-    } catch (error) {
-        res.status(500).json(error);
-    }
-}
 
 //CRUD
 
@@ -70,7 +57,7 @@ const check_tournament = async function (req, res) {
     try {
         let today = moment();
         today = today.format("YYYY-MM-DD");
-        today = moment(today).subtract(2, 'days');
+        today = moment(today).subtract(7, 'days');
 
         const tournaments = await prisma.tournament.findMany({
             where: {
@@ -80,38 +67,61 @@ const check_tournament = async function (req, res) {
             include: {
                 TournamentPrize: {
                     include: {
-                        Prize: true
+                        Prize: true,
+                        TournamentWinner: true
                     },
                 },
                 TournamentMode: true,
-                TournamentCategory: true
+                TournamentCategory: true,
+                TournamentUser: {
+                    include: {
+                        User: {
+                            select: {
+                                username: true,
+                                image: true
+                            }
+                        }
+                    },
+                }
             },
             orderBy: {created_at: 'asc'}
         });
 
+        console.log(tournaments)
 
         const all_tournaments = []
         for (let i = 0; i < tournaments.length; i++) {
             let tournament = tournaments[i];
 
             if (tournament && tournament.TournamentPrize.length > 0) {
+                console.log("gg")
                 let tournament_active = check_tournament_active(tournament)
+
+                console.log("==tournament_active===")
+                console.log(tournament_active)
+                console.log("==tournament_active===")
+
+
                 tournament = {...tournament, ...tournament_active}
 
-
+                tournament["users"] = await formatUser(tournament.TournamentUser);
                 let modes = await formatMode(tournament.TournamentMode);
                 if (modes.length > 0) {
                     tournament["modes"] = modes;
-
+                    tournament["winners"] = extractWinners(tournament.TournamentPrize);
                     try {
                         tournament = await checkTournamentRegistration(req.user.id, tournament);
                         tournament["available_spaces"] = await get_available_spaces(tournament.id)
+                        tournament["is_registration_open"] = checkRegistrationOpen(tournament);
                     } catch (error) {
                         console.log(error)
                     }
 
                     all_tournaments.push(tournament)
                 }
+
+                delete tournament["TournamentUser"]
+                delete tournament["TournamentMode"]
             }
         }
         return res.status(200).json(all_tournaments)
@@ -123,6 +133,18 @@ exports.check_tournament = check_tournament;
 
 
 function check_tournament_active(tournament) {
+    let today = moment()
+
+    let has_started = false; //the tournament has started
+    let has_ended = false;  //the tournament has finished
+
+    let avail = false;
+    let in_play = false;
+    let is_tomorrow = false;
+    let time_left = null;
+    let time_message = "";
+
+
     let format = 'hh:mm:ss'
     let startTime = new moment(tournament.start_time);
     startTime = startTime.format("HH:mm:ss");
@@ -132,38 +154,55 @@ function check_tournament_active(tournament) {
     let endTimeHours = endTime.format("HH:mm:ss");
     endTime = moment(endTimeHours, format)
 
-    let today = moment()
+    let startDate = new moment(tournament.start_date);
+    let endDate = new moment(tournament.end_date);
 
-    let avail = false;
-    let is_tomorrow = false;
-    let time_left = null;
-    let time_message = "null";
+    startDate.set({
+        hour: startTime.get('hour'),
+        minute: startTime.get('minute'),
+        second: startTime.get('second')
+    });
 
-    //if the current time is between the start and end time and the current time is before the endtime
-    if (today.isBetween(startTime, endTime) && today.isBefore(endTime)) {
-        //   if the end time is in the future
-        avail = true
-        time_left = endTime.valueOf() - today.valueOf();
-        time_message = `Ends at ${endTime.format("h:mm A")}`
-        //if the current time is before the start
-    } else if (today.isBefore(startTime)) {
-        time_left = startTime.valueOf() - today.valueOf();
-        time_message = `Starts at ${startTime.format("h:mm A")}`
-        //if the end time is before the current time
-    } else if (endTime.isBefore(today)) {
-        let tomorrow = moment().add(1, "day");
-        tomorrow.set({
-            hour: startTime.get('hour'),
-            minute: startTime.get('minute'),
-            second: startTime.get('second')
-        });
+    //if the current date is between the start date and end date
+    if (today.isBetween(startDate, endDate)) {
+        has_started = true;
 
-        is_tomorrow = true
-        time_left = tomorrow.valueOf() - today.valueOf();
-        time_message = `Tomorrow at ${startTime.format("h:mm A")}`
+        //if the current time is between the start and end time and the current time is before the endtime
+        if (today.isBetween(startTime, endTime) && today.isBefore(endTime)) {
+            //   if the end time is in the future
+            avail = true
+            in_play = true
+            time_left = endTime.valueOf() - today.valueOf();
+            time_message = `Ends at ${endTime.format("h:mm A")}`
+            //if the current time is before the start
+        } else if (today.isBefore(startTime)) {
+            time_left = startTime.valueOf() - today.valueOf();
+            time_message = `Starts at ${startTime.format("h:mm A")}`
+            //if the end time is before the current time
+        } else if (endTime.isBefore(today)) {
+            let tomorrow = moment().add(1, "day");
+            tomorrow.set({
+                hour: startTime.get('hour'),
+                minute: startTime.get('minute'),
+                second: startTime.get('second')
+            });
+
+            is_tomorrow = true
+            time_left = tomorrow.valueOf() - today.valueOf();
+            time_message = `Tomorrow at ${startTime.format("h:mm A")}`
+        }
+        //if the end date is before the current date
+    } else if (endDate.isBefore(today)) {
+        has_ended = true;
+    }else{
+        console.log("jjj")
+        time_left = startDate.valueOf() - today.valueOf();
+        console.log(time_left)
+        console.log("jjj")
     }
 
-    let result = {avail, is_tomorrow, time_left, time_message};
+
+    let result = {has_started, has_ended, avail, in_play, is_tomorrow, time_left, time_message};
 
     return result;
 }
@@ -191,26 +230,86 @@ exports.check_tournament_stats = async function (req, res) {
         const {tournament_id} = req.body;
         let user_id = req.user.id;
 
-        let tournament = await prisma.tournament.findFirst({where: {id: parseInt(tournament_id)}});
-        //Check the tournament is active (now is between the start time and end time)
-        let tournament_active = check_tournament_active(tournament)
-
-        //Get the available points
-        let available_points = await get_available_points(tournament.id)
-
-        //Check if there is a game available for this user
-        let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
-        tournament_active['next_game'] = tournament_game_check.next_game;
-
-        if (tournament_active.avail === true) {
-            tournament_active['avail'] = tournament_game_check.new_game_avail;
-        }
-
-        return res.status(200).json({...tournament_active, ...available_points})
+        let result = await check_tournament_stats(tournament_id, user_id)
+        return res.status(200).json(result)
 
     } catch (error) {
-        res.status(500).json(error)
+        return res.status(500).json(error)
     }
+}
+
+async function check_tournament_stats(tournament_id, user_id) {
+    let tournament = await prisma.tournament.findFirst({
+        where: {id: parseInt(tournament_id)
+
+        },
+        include: {
+            TournamentPrize: {
+                include: {
+                    Prize: true,
+                    TournamentWinner: {
+                        include: {
+                            User: {
+                                select: {
+                                    username: true,
+                                    image: true
+                                }
+                            }
+                        },
+                    }
+                },
+            },
+            TournamentMode: true,
+            TournamentCategory: true,
+            TournamentUser: {
+                include: {
+                    User: {
+                        select: {
+                            username: true,
+                            image: true
+                        }
+                    }
+                },
+            }
+        }
+
+    });
+
+    //Get leaderboard
+
+    let winners = extractWinners(tournament.TournamentPrize);
+    let users = await formatUser(tournament.TournamentUser);
+    let modes = await formatMode(tournament.TournamentMode);
+
+    let leaders = [];
+    try {
+        let highest_point = await runQuery("points", 1)
+        if (highest_point.length > 0) leaders.push({...highest_point[0], title: "Highest Points", type: "points"})
+
+        let best_time = await runQuery("time", 1)
+        if (best_time.length > 0) leaders.push({...best_time[0], title: "Best Time", type: "time"})
+
+        let best_success_rate = await runQuery("success", 1)
+        if (best_success_rate.length > 0) leaders.push({...best_success_rate[0], title: "Best Success Rate", type: "success"})
+    } catch (error) {
+        console.log(error)
+    }
+
+    //Check the tournament is active (now is between the start time and end time)
+    let tournament_active = check_tournament_active(tournament)
+
+    //Get the available points
+    let available_points = await get_available_points(tournament.id)
+
+    //Check if there is a game available for this user
+    let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
+    tournament_active['next_game'] = tournament_game_check.next_game;
+
+    if (tournament_active.avail === true) {
+        tournament_active['avail'] = tournament_game_check.new_game_avail;
+    }
+
+    return ({...tournament_active, ...available_points, winners, leaders, users, modes, id: tournament.id})
 }
 
 exports.register_for_tournament = async function (req, res) {
@@ -234,10 +333,9 @@ exports.register_for_tournament = async function (req, res) {
             message: "You are already registered for this tournament."
         });
 
-        const today = moment();
-        let registrationCloses = new moment(tournament.registration_closes);
+        let isRegistrationOpen = checkRegistrationOpen(tournament);
         //Check if registration is closed
-        if (today.isBefore(registrationCloses)) {
+        if (isRegistrationOpen === true) {
             // Create a new record for the user for this tournament
             let tournament_user = await prisma.tournamentUser.create({
                 data: {
@@ -247,13 +345,23 @@ exports.register_for_tournament = async function (req, res) {
             })
 
             return await deductPoints(req, res, tournament, tournament_user)
-        } else if (registrationCloses.isBefore(today)) {
+        } else {
             return res.status(401).json({type: "closed", message: "Registration for this tournament has closed."});
         }
     } catch (error) {
         res.status(500).json(error)
     }
 };
+
+
+function checkRegistrationOpen(tournament) {
+    const today = moment();
+    let registrationCloses = new moment(tournament.registration_closes);
+    //Check if registration is open or closed
+
+    if (today.isBefore(registrationCloses)) return true;
+    else if (registrationCloses.isBefore(today)) return false;
+}
 
 
 exports.tournament_leaderboard = async function (req, res) {
@@ -282,11 +390,9 @@ exports.tournament_leaderboard = async function (req, res) {
 };
 
 
-async function runQuery(type) {
+async function runQuery(type, limit=10) {
     try {
         let leaderboard = null;
-
-
 
 
         let top_users =
@@ -320,14 +426,13 @@ async function runQuery(type) {
             "INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id " +
             "INNER JOIN user ON tournament_game.user_id = user.id " +
             "WHERE tq.correct IS NOT NULL AND tournament_game.user_id " +
-            "NOT IN (SELECT user_id FROM("+best_points_query+") as bt) " +
+            "NOT IN (SELECT user_id FROM(" + best_points_query + ") as bt) " +
             "GROUP BY user_id " +
             "ORDER BY average_time_per_question asc " +
-            "LIMIT 10" +
-            ") as g WHERE g.user_id IN ("+top_users+")"
+            "LIMIT "+limit+"" +
+            ") as g WHERE g.user_id IN (" + top_users + ")"
 
         // let best_time_user =  await prisma.$queryRawUnsafe(best_time_query)
-
 
 
         if (type && type === "points") {
@@ -361,12 +466,12 @@ async function runQuery(type) {
             WHERE tg.submitted_at IS NOT NULL
             GROUP BY user_id) points_available ON points_available.user_id = user.id
             ORDER BY points desc, no_of_games_played desc
-        ) as f , (SELECT @rank := 0) m LIMIT 10
+        ) as f , (SELECT @rank := 0) m LIMIT ${limit}
         ) as r
        WHERE user_id IN (
        SELECT user_id From(SELECT user_id, COUNT(*) AS no_of_games_played FROM tournament_game tg WHERE tg.submitted_at IS NOT NULL GROUP BY user_id) as e WHERE no_of_games_played > 2)`
         } else if (type && type === "time") {
-            leaderboard =  await prisma.$queryRawUnsafe(best_time_query)
+            leaderboard = await prisma.$queryRawUnsafe(best_time_query)
         } else if (type && type === "success") {
 
             let success_query = "SELECT * FROM(" +
@@ -387,9 +492,9 @@ async function runQuery(type) {
                 "FROM tournament_game tg " +
                 "WHERE tg.submitted_at IS NOT NULL " +
                 "GROUP BY user_id) points_available ON points_available.user_id = user.id " +
-                "WHERE points_available.user_id NOT IN (SELECT user_id FROM("+best_points_query+") as bp) " +
+                "WHERE points_available.user_id NOT IN (SELECT user_id FROM(" + best_points_query + ") as bp) " +
                 "ORDER BY success_rate desc" +
-                ") as r "
+                ") as r LIMIT "+limit+""
 
             leaderboard = await prisma.$queryRawUnsafe(success_query)
         }
@@ -403,6 +508,8 @@ async function runQuery(type) {
 
 
 async function deductPoints(req, res, tournament, tournament_user) {
+
+    console.log(req.user.id)
     try {
         await prisma.userPoints.create({
             data: {
@@ -417,6 +524,7 @@ async function deductPoints(req, res, tournament, tournament_user) {
         //Returns the tournament info
         await check_tournament(req, res);
     } catch (error) {
+        console.log(error)
         await prisma.tournamentUser.delete({where: {id: tournament_user.id}})
         res.status(500).json(error)
     }
@@ -434,7 +542,8 @@ async function get_available_points(tournament_id) {
             where: {
                 tournamentId: parseInt(tournament_id),
                 submittedAt: null,
-                nextGameAt: {gt: new Date(today)},
+                initiatedAt: {gt: new Date(today)},
+                // nextGameAt: {gt: new Date(today)},
             },
             _sum: {
                 pointsAvailable: true,
@@ -447,6 +556,7 @@ async function get_available_points(tournament_id) {
                 NOT: {
                     submittedAt: null
                 },
+                initiatedAt: {gt: new Date(today)},
             },
             _sum: {
                 pointsObtained: true,
@@ -481,6 +591,34 @@ async function get_available_spaces(tournament_id) {
 }
 
 
+function extractWinners(prizes) {
+    try {
+        let all_prizes = [];
+        prizes.map((prizess, idx) => {
+            let position = prizess.position;
+            let winners = prizess.TournamentWinner;
+
+            console.log(position)
+            winners.map((winner, idx) => winners[idx]["position"] = position)
+
+            all_prizes = [...all_prizes, ...winners]
+        })
+
+        all_prizes.map((prize, idx) => {
+            all_prizes[idx] = {...all_prizes[idx], ...all_prizes[idx]['User']}
+
+            delete all_prizes[idx]['User']
+        })
+
+        console.log(all_prizes)
+        return all_prizes;
+
+    } catch (error) {
+        console.log(error)
+        return [];
+    }
+}
+
 async function formatMode(modes) {
     try {
         //Get levels
@@ -514,8 +652,16 @@ async function formatMode(modes) {
         console.log(error)
         return [];
     }
+}
 
+async function formatUser(users) {
+    for (let j = 0; j < users.length; j++) {
+        let {userId, User} = users[j];
 
+        users[j] = {userId, ...User}
+    }
+
+    return users;
 }
 
 
@@ -547,12 +693,14 @@ async function checkTournamentGame(user_id, tournament_id) {
         let next_game = null
         let new_game_avail = false;
 
+        let today = moment();
+        let start = today.startOf('day').format('YYYY-MM-DD HH:mm');
         //Get the most recent game played for this tournament
         const game = await prisma.tournamentGame.findFirst({
             where: {
                 tournamentId: tournament_id,
                 userId: user_id,
-                initiatedAt: new Date(moment()),
+                initiatedAt: {gte: new Date(start)},
             },
             orderBy: {
                 initiatedAt: "desc"
@@ -572,6 +720,9 @@ async function checkTournamentGame(user_id, tournament_id) {
             next_game = get_next_game(game)
         }
 
+        console.log("is bk")
+        console.log({new_game_avail, next_game})
+        console.log("is bk")
         return {new_game_avail, next_game};
     } catch (error) {
         throw error
@@ -593,3 +744,4 @@ async function push_update(tournament_id) {
 
 exports.checkTournamentGame = checkTournamentGame;
 exports.getAvailablePoints = get_available_points;
+exports.checkTournamentStats = check_tournament_stats;
