@@ -72,20 +72,20 @@ exports.checkAnswers = function (questions) {
     let queries = [];
 
     questions.map((question) => {
-            const {selected, answer, points, time} = question;
+            const {selected, answer, points, points_earned, time_taken} = question;
             let correct = null;
 
             if (selected === answer) {
                 correct = true
                 correct_answers++
-                points_obtained = points_obtained + points;
+                points_obtained = points_obtained + points_earned;
             } else if (selected !== null) {
                 correct = false
                 wrong_answers++
             } else skipped++
 
 
-        let query = {where: {id: question.game_question_id}, data: {correct, time}}
+        let query = {where: {id: question.game_question_id}, data: {correct, time:time_taken}}
         queries.push(query)
         }
     );
