@@ -87,19 +87,13 @@ const check_tournament = async function (req, res) {
             orderBy: {created_at: 'asc'}
         });
 
-        console.log(tournaments)
-
         const all_tournaments = []
         for (let i = 0; i < tournaments.length; i++) {
             let tournament = tournaments[i];
 
             if (tournament && tournament.TournamentPrize.length > 0) {
-                console.log("gg")
                 let tournament_active = check_tournament_active(tournament)
-
-                console.log("==tournament_active===")
-                console.log(tournament_active)
-                console.log("==tournament_active===")
+                let {has_ended} = tournament_active
 
 
                 tournament = {...tournament, ...tournament_active}
@@ -108,7 +102,9 @@ const check_tournament = async function (req, res) {
                 let modes = await formatMode(tournament.TournamentMode);
                 if (modes.length > 0) {
                     tournament["modes"] = modes;
-                    tournament["winners"] = extractWinners(tournament.TournamentPrize);
+                    let result = extractWinners(tournament.TournamentPrize);
+                    tournament = {...tournament, ...result}
+
                     try {
                         tournament = await checkTournamentRegistration(req.user.id, tournament);
                         tournament["available_spaces"] = await get_available_spaces(tournament.id)
@@ -195,10 +191,7 @@ function check_tournament_active(tournament) {
     } else if (endDate.isBefore(today)) {
         has_ended = true;
     }else{
-        console.log("jjj")
         time_left = startDate.valueOf() - today.valueOf();
-        console.log(time_left)
-        console.log("jjj")
     }
 
 
@@ -277,7 +270,9 @@ async function check_tournament_stats(tournament_id, user_id) {
 
     //Get leaderboard
 
-    let winners = extractWinners(tournament.TournamentPrize);
+
+    let {prizes, winners} = extractWinners(tournament.TournamentPrize);
+
     let users = await formatUser(tournament.TournamentUser);
     let modes = await formatMode(tournament.TournamentMode);
 
@@ -309,7 +304,7 @@ async function check_tournament_stats(tournament_id, user_id) {
         tournament_active['avail'] = tournament_game_check.new_game_avail;
     }
 
-    return ({...tournament_active, ...available_points, winners, leaders, users, modes, id: tournament.id})
+    return ({...tournament_active, ...available_points, winners, prizes, leaders, users, modes, id: tournament.id})
 }
 
 exports.register_for_tournament = async function (req, res) {
@@ -509,7 +504,6 @@ async function runQuery(type, limit=10) {
 
 async function deductPoints(req, res, tournament, tournament_user) {
 
-    console.log(req.user.id)
     try {
         await prisma.userPoints.create({
             data: {
@@ -594,24 +588,26 @@ async function get_available_spaces(tournament_id) {
 function extractWinners(prizes) {
     try {
         let all_prizes = [];
-        prizes.map((prizess, idx) => {
-            let position = prizess.position;
-            let winners = prizess.TournamentWinner;
+        let all_winners = [];
+        prizes.map((obj, idx) => {
+            let position = obj.position;
+            let prize = obj.Prize;
+            let winners = obj.TournamentWinner;
 
-            console.log(position)
+            all_prizes.push(prize)
+
             winners.map((winner, idx) => winners[idx]["position"] = position)
 
-            all_prizes = [...all_prizes, ...winners]
+            all_winners = [...all_winners, ...winners]
         })
 
-        all_prizes.map((prize, idx) => {
-            all_prizes[idx] = {...all_prizes[idx], ...all_prizes[idx]['User']}
+        all_winners.map((prize, idx) => {
+            all_winners[idx] = {...all_winners[idx], ...all_winners[idx]['User']}
 
-            delete all_prizes[idx]['User']
+            delete all_winners[idx]['User']
         })
 
-        console.log(all_prizes)
-        return all_prizes;
+        return {winners: all_winners, prizes:all_prizes};
 
     } catch (error) {
         console.log(error)
@@ -719,10 +715,6 @@ async function checkTournamentGame(user_id, tournament_id) {
         if (has_next_game === true && next_game_avail === false) {
             next_game = get_next_game(game)
         }
-
-        console.log("is bk")
-        console.log({new_game_avail, next_game})
-        console.log("is bk")
         return {new_game_avail, next_game};
     } catch (error) {
         throw error
@@ -741,6 +733,35 @@ async function push_update(tournament_id) {
         console.log(error)
     }
 }
+
+
+
+// @route GET api/user/{id}/prizes/
+// @desc Returns all the tournament prizes for a specific user
+// @access Public
+exports.user_prizes = async function (req, res) {
+    try {
+        let prizes = await prisma.tournamentWinner.findMany({
+            where: {
+                userId: parseInt(req.user.id)
+            },
+            include: {
+                TournamentPrize: {
+                    include: {
+                        Prize: true,
+                        Tournament: true
+                    },
+                }
+            },
+        })
+
+        res.status(200).json(prizes);
+    } catch (error) {
+        res.status(500).json(error)
+    }
+};
+
+
 
 exports.checkTournamentGame = checkTournamentGame;
 exports.getAvailablePoints = get_available_points;

@@ -6,7 +6,6 @@ const TournamentGame = require('../controllers/tournament_game');
 const validate = require('../middlewares/validate');
 const Game = require("../controllers/game");
 const Leaderboard = require("../controllers/leaderboard");
-// const WeeklyPrize = require("../controllers/weekly_prize");
 
 const router = express.Router();
 
@@ -57,7 +56,7 @@ router.post('/validate', [
 ], validate, TournamentGame.validate);
 
 //PRIZES
-// router.get('/prize',  WeeklyPrize.challenge_prizes);
+router.get('/user-prizes/',  Tournament.user_prizes);
 
 //SHOW
 router.get('/:id',  TournamentGame.read);
