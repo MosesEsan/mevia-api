@@ -7,6 +7,7 @@ const weekly_prize = require('./weekly_prize');
 const game = require('./game');
 const challenge = require('./challenge');
 const tournament = require('./tournament');
+const tournament_winner = require('./tournament_winner');
 const user = require('./user');
 const prize = require('./prize');
 // const admin_prize = require('./admin/prize');
@@ -49,6 +50,7 @@ module.exports = app => {
     app.use('/api/game', authenticate, game);
     app.use('/api/leaderboard', authenticate, leaderboard);
     app.use('/api/notification', authenticate, notification);
+    app.use('/api/winner', authenticate, tournament_winner);
 
     app.use('/api/prize', authenticate, prize);
     // app.use('/api/prize', prize);

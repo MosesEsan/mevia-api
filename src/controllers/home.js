@@ -106,8 +106,6 @@ exports.index = async function (req, res) {
             panels
         }
 
-        console.log(challenge, challenge_error,)
-
         res.status(200).json(data);
     } catch (error) {
         console.log(error)

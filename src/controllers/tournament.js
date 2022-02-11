@@ -739,9 +739,9 @@ async function push_update(tournament_id) {
 // @route GET api/user/{id}/prizes/
 // @desc Returns all the tournament prizes for a specific user
 // @access Public
-exports.user_prizes = async function (req, res) {
+exports.user_rewards = async function (req, res) {
     try {
-        let prizes = await prisma.tournamentWinner.findMany({
+        let rewards = await prisma.tournamentWinner.findMany({
             where: {
                 userId: parseInt(req.user.id)
             },
@@ -755,12 +755,11 @@ exports.user_prizes = async function (req, res) {
             },
         })
 
-        res.status(200).json(prizes);
+        res.status(200).json(rewards);
     } catch (error) {
         res.status(500).json(error)
     }
 };
-
 
 
 exports.checkTournamentGame = checkTournamentGame;

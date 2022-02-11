@@ -65,7 +65,6 @@ exports.create = async function (req, res) {
 
     //check the points remaining for tournament
     let {points_remaining} = await TournamentController.getAvailablePoints(tournament_id);
-    console.log(points_remaining)
 
     if (points_remaining < modePoints){
         return res.status(401).json({success: false, "message": "There isn't enough points available for this mode. Please pick another mode."})

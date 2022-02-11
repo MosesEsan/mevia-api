@@ -29,8 +29,6 @@ function get_next_game(game) {
     // next_game = next_game.format("HH:mm:ss");
     // next_game = moment(next_game, format)
 
-    console.log(next_game)
-
     let check = moment()
     let message = `Next Game Starts At ${next_game}`
     let time_left = next_game.valueOf() - check.valueOf();

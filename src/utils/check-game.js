@@ -46,7 +46,6 @@ exports.getNextTournamentGameTime = function (tournamentEndTime) {
     tournamentEndTime.set('year', year);
     tournamentEndTime.set('month', month-1);
     tournamentEndTime.set('date', date);
-    console.log("tournamentEndTime now ", tournamentEndTime)
 
     //calculate the time for the next game
     let timePlusThirty = moment().add(30, 'minutes')

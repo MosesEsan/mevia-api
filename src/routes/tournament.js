@@ -6,6 +6,8 @@ const TournamentGame = require('../controllers/tournament_game');
 const validate = require('../middlewares/validate');
 const Game = require("../controllers/game");
 const Leaderboard = require("../controllers/leaderboard");
+const TournamentWinner = require("../controllers/tournament_winner");
+const Prize = require("../controllers/prize");
 
 const router = express.Router();
 
@@ -55,8 +57,16 @@ router.post('/validate', [
     check('questions').not().isEmpty().withMessage('The Questions is required'),
 ], validate, TournamentGame.validate);
 
-//PRIZES
-router.get('/user-prizes/',  Tournament.user_prizes);
+//REWARDS
+router.get('/reward/',  Tournament.user_rewards);
+
+//REWARD
+router.get('/reward/:id', TournamentWinner.read);
+
+//REDEEM
+router.post('/redeem', [
+    check('reward_id').not().isEmpty().withMessage('Reward Id is required'),
+], TournamentWinner.redeem);
 
 //SHOW
 router.get('/:id',  TournamentGame.read);
