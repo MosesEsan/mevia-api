@@ -10,6 +10,9 @@ const tournament = require('./tournament');
 const tournament_winner = require('./tournament_winner');
 const user = require('./user');
 const prize = require('./prize');
+const reward = require('./reward');
+const ad = require('./ad');
+const daily_reward = require('./daily_reward');
 // const admin_prize = require('./admin/prize');
 const leaderboard = require('./leaderboard');
 const notification = require('./notification');
@@ -51,7 +54,10 @@ module.exports = app => {
     app.use('/api/leaderboard', authenticate, leaderboard);
     app.use('/api/notification', authenticate, notification);
     app.use('/api/winner', authenticate, tournament_winner);
+    app.use('/api/ad', authenticate, ad);
+    app.use('/api/daily_reward', authenticate, daily_reward);
 
     app.use('/api/prize', authenticate, prize);
+    app.use('/api/reward', authenticate, reward);
     // app.use('/api/prize', prize);
 };
