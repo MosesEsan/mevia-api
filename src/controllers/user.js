@@ -55,6 +55,7 @@ exports.update = async function (req, res) {
 
 const get_user_stats = async (user) => {
     try{
+        //Get The Game Points
         const game_points = await prisma.game.aggregate({
             where: {
                 userId: parseInt(user.id),
@@ -72,16 +73,26 @@ const get_user_stats = async (user) => {
         let points_total = game_points._sum.pointsObtained;
         let no_of_games = game_points._count.id;
 
+        //Get The Registration Points
         const user_points = await prisma.userPoints.aggregate({
             where: {userId: parseInt(user.id)},
             _sum: {
                 points: true,
             },
         });
-        const user_types = await prisma.userType.findMany();
+
+        //Get The Daily Rewards Points
+        const daily_reward_points = await prisma.dailyReward.aggregate({
+            where: {userId: parseInt(user.id)},
+            _sum: {
+                points: true,
+            },
+        });
+
 
         let current = null
         let next = null
+        const user_types = await prisma.userType.findMany();
         user_types.map((user_type, idx) => {
             if (current === null && user_type.minGames <= no_of_games){
                 current = user_type;
@@ -93,7 +104,7 @@ const get_user_stats = async (user) => {
         })
 
         let user_type = {current, next}
-        user['points'] = points_total + user_points._sum.points;
+        user['points'] = points_total + user_points._sum.points + daily_reward_points._sum.points;
         user['no_of_games'] = no_of_games;
         user['user_type'] = user_type;
 

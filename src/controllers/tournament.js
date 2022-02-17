@@ -3,10 +3,9 @@ const moment = require('moment')
 const {isGameValid, get_next_game} = require("../utils/isGameValid");
 const pusher = require("../config/pusher");
 const {slugify} = require("../utils/slugify");
-
+const UserController = require("../controllers/user");
 
 //CRUD
-
 // @route POST api/tournament
 // @desc Add a new tournament
 // @access Public
@@ -107,7 +106,7 @@ const check_tournament = async function (req, res) {
 
                     try {
                         tournament = await checkTournamentRegistration(req.user.id, tournament);
-                        tournament["available_spaces"] = await get_available_spaces(tournament.id)
+                        tournament["available_spaces"] = await getAvailableSpaces(tournament.id)
                         tournament["is_registration_open"] = checkRegistrationOpen(tournament);
                     } catch (error) {
                         console.log(error)
@@ -194,10 +193,7 @@ function check_tournament_active(tournament) {
         time_left = startDate.valueOf() - today.valueOf();
     }
 
-
-    let result = {has_started, has_ended, avail, in_play, is_tomorrow, time_left, time_message};
-
-    return result;
+    return {has_started, has_ended, avail, in_play, is_tomorrow, time_left, time_message};
 }
 
 // @route POST api/tournament/
@@ -299,6 +295,8 @@ async function check_tournament_stats(tournament_id, user_id) {
     //Check if there is a game available for this user
     let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
     tournament_active['next_game'] = tournament_game_check.next_game;
+    tournament_active["available_spaces"] = await getAvailableSpaces(tournament.id)
+    tournament_active["is_registration_open"] = checkRegistrationOpen(tournament);
 
     if (tournament_active.avail === true) {
         tournament_active['avail'] = tournament_game_check.new_game_avail;
@@ -331,6 +329,15 @@ exports.register_for_tournament = async function (req, res) {
         let isRegistrationOpen = checkRegistrationOpen(tournament);
         //Check if registration is closed
         if (isRegistrationOpen === true) {
+            //check if user has enough points
+            let can_register = false;
+
+            const user = UserController.get_user_stats(req.user);
+            let points_required = parseInt(tournament.entry_fee);
+            if (user.points >= points_required) can_register = true;
+
+            if (!can_register) return res.status(401).json({message: `You need ${points_required} points to register..`});
+
             // Create a new record for the user for this tournament
             let tournament_user = await prisma.tournamentUser.create({
                 data: {
@@ -568,7 +575,7 @@ async function get_available_points(tournament_id) {
 }
 
 
-async function get_available_spaces(tournament_id) {
+async function getAvailableSpaces(tournament_id) {
     try {
         const tournament = await prisma.tournament.findFirst({where: {id: parseInt(tournament_id)}});
 
@@ -726,7 +733,7 @@ async function push_update(tournament_id) {
     try {
         let tournament = await prisma.tournament.findUnique({where: {id: parseInt(tournament_id)}})
         if (tournament) {
-            let result = await get_available_spaces(tournament_id)
+            let result = await getAvailableSpaces(tournament_id)
             await pusher.trigger(`tour_${tournament.id}_${slugify(tournament.name)}`, "space-update", result);
         }
     } catch (error) {
@@ -749,18 +756,40 @@ exports.user_rewards = async function (req, res) {
                 TournamentPrize: {
                     include: {
                         Prize: true,
-                        Tournament: true
+                        Tournament: true,
+                        GiftCard: true,
                     },
                 }
             },
         })
 
+        rewards = formatRewards(rewards)
         res.status(200).json(rewards);
     } catch (error) {
         res.status(500).json(error)
     }
 };
 
+
+function formatRewards(rewards) {
+    rewards.forEach((obj, idx) => {
+        let tournament_prize = obj["TournamentPrize"]
+
+        obj["tournament"] = tournament_prize["Tournament"]
+
+        let prize = tournament_prize["Prize"]
+        delete prize["id"]
+        obj["TournamentPrize"] = {...tournament_prize, ...prize}
+
+        let gift_cards = obj["TournamentPrize"]["GiftCard"]
+        obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
+
+        delete obj["TournamentPrize"]["GiftCard"]
+        delete obj["TournamentPrize"]["Prize"]
+    });
+
+    return rewards;
+}
 
 exports.checkTournamentGame = checkTournamentGame;
 exports.getAvailablePoints = get_available_points;
