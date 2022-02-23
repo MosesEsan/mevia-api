@@ -26,6 +26,7 @@ router.get('/', User.index);
 //     check('lastName').not().isEmpty().withMessage('You last name is required')
 // ], validate, User.create);
 
+
 //PRIZES
 router.get('/:id/prizes/',  WeeklyPrize.user_prizes);
 
@@ -34,6 +35,9 @@ router.get('/:id/games/',  WeeklyGame.user_games);
 
 //USER RANK
 router.get('/:id/rank/',  User.get_user_rank);
+
+//POINTS
+router.get('/:id/points/',  User.get_user_points);
 
 //READ
 router.get('/:id',  User.read);

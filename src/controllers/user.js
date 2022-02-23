@@ -29,7 +29,7 @@ exports.read = async function (req, res) {
 
     } catch (error) {
         logger.error(e);
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
@@ -48,7 +48,9 @@ exports.update = async function (req, res) {
         const user = await prisma.user.update({where: { id: parseInt(id) }, data})
         res.status(200).json(user);
     } catch (error) {
-        res.status(500).json({error});
+
+        console.log(error)
+        res.status(500).json(error);
     }
 };
 
@@ -70,12 +72,27 @@ const get_user_stats = async (user) => {
                 id: true,
             },
         });
-        let points_total = game_points._sum.pointsObtained;
+        let games_points = game_points._sum.pointsObtained;
         let no_of_games = game_points._count.id;
 
         //Get The Registration Points
         const user_points = await prisma.userPoints.aggregate({
-            where: {userId: parseInt(user.id)},
+            where: {
+                userId: parseInt(user.id),
+                NOT: {
+                    source: "TOURNAMENT"
+                },
+            },
+            _sum: {
+                points: true,
+            },
+        });
+
+        const tournament_points = await prisma.userPoints.aggregate({
+            where: {
+                userId: parseInt(user.id),
+                source: "TOURNAMENT"
+            },
             _sum: {
                 points: true,
             },
@@ -88,6 +105,7 @@ const get_user_stats = async (user) => {
                 points: true,
             },
         });
+        let daily_rewards_points = daily_reward_points._sum.points
 
 
         let current = null
@@ -104,11 +122,119 @@ const get_user_stats = async (user) => {
         })
 
         let user_type = {current, next}
-        user['points'] = points_total + user_points._sum.points + daily_reward_points._sum.points;
+
+        let users_points = user_points._sum.points - tournament_points._sum.points
+
+        user['points'] = games_points + users_points + daily_rewards_points;
         user['no_of_games'] = no_of_games;
         user['user_type'] = user_type;
 
         return user;
+    }catch (e) {
+        throw e;
+    }
+}
+
+
+exports.get_user_points = async function (req, res) {
+    try{
+        let user = req.user;
+
+        let all_points = []
+        //Get The Game Points
+        const game_points = await prisma.game.findMany({
+            where: {
+                userId: parseInt(user.id),
+                NOT: {
+                    submittedAt: null
+                },
+            },
+            select: {
+                submittedAt: true,
+                pointsObtained: true
+            }
+        });
+
+        game_points.map((obj, idx) => {
+            all_points.push({
+                type: "game",
+                text: "New Game",
+                points: obj["pointsObtained"],
+                date: obj.submittedAt,
+                deduct: false
+            })
+        })
+
+        //Get The Registration Points
+        const user_points = await prisma.userPoints.findMany({
+            where: {
+                userId: parseInt(user.id),
+                NOT: {
+                    source: "TOURNAMENT"
+                },
+            },
+            select: {
+                created_at: true,
+                points: true
+            }
+        });
+
+        user_points.map((obj, idx) => {
+            all_points.push({
+                type: "welcome",
+                text: "Welcome Gift",
+                points: obj["points"],
+                date: obj.created_at,
+                deduct: false
+            })
+        })
+
+        const tournament_points = await prisma.userPoints.findMany({
+            where: {
+                userId: parseInt(user.id),
+                source: "TOURNAMENT"
+            },
+            select: {
+                created_at: true,
+                points: true
+            }
+        });
+
+        tournament_points.map((obj, idx) => {
+            all_points.push({
+                type: "tournament_registration",
+                text: "Tournament Registration",
+                points: obj["points"],
+                date: obj.created_at,
+                deduct: true
+            })
+        })
+
+        //Get The Daily Rewards Points
+        const daily_reward_points = await prisma.dailyReward.findMany({
+            where: {userId: parseInt(user.id)},
+            select: {
+                createdAt: true,
+                points: true
+            }
+        });
+
+        daily_reward_points.map((obj, idx) => {
+            all_points.push({
+                type: "daily_reward",
+                text: "Daily Reward",
+                points: obj["points"],
+                date: obj.createdAt,
+                deduct: false
+            })
+        })
+
+        all_points.sort(function (a, b) {
+            var dateA = new Date(a.date), dateB = new Date(b.date)
+            return dateA - dateB
+        });
+
+        res.status(200).json(all_points.reverse());
     }catch (e) {
         throw e;
     }
