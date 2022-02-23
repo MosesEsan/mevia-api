@@ -69,7 +69,7 @@ exports.read = async function (req, res) {
 
         res.status(200).json(reward);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
@@ -85,7 +85,7 @@ exports.update = async function (req, res) {
         const reward = await prisma.reward.update({where: { id: parseInt(id) }, data})
         res.status(200).json(reward);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
@@ -96,29 +96,57 @@ exports.redeem = async (req, res) => {
 
         console.log(req.body)
 
-        const user = UserController.get_user_stats(req.user);
-        const reward = await prisma.reward.findFirst({where: {id: parseInt(req.body.reward_id)}});
+        const user = await UserController.get_user_stats(req.user);
+        const reward = await prisma.reward.findFirst({where: {id: parseInt(req.body.reward_id)},
+            include:{
+                UserType:true
+            }});
         if (!reward) return res.status(401).json({message: `Reward not found`});
+
+        //Check the user type
+        let user_type = reward.UserType.name;
+        if (user.user_type.current.name !== user_type) return res.status(401).json({message: `You need to be a ${user_type.toUpperCase()} user to redeem this reward.`});
 
         //Check if the user has enough points
         let points_required = parseInt(reward.points);
         if (user.points >= points_required) can_redeem = true;
         if (!can_redeem) return res.status(401).json({message: `You need ${points_required} points to redeem this reward.`});
 
+        let data = {rewardId:reward.id, userId:user.id}
+        await prisma.redeem.create({data})
 
-        //Check if theres a gift card available
-        const gift_card = await prisma.giftCard.findFirst({where: {id: parseInt(reward.id), redeemId: null}});
-        if (!gift_card) return res.status(401).json({message: `Sorry this reward is not available at this time.`});
-
-
-        let data = {rewardId:reward.id, userId:user.id, dateClaimed :new Date()}
-        let redeemed = await prisma.redeem.create({data})
-
-        await updateGiftCard(req, res,{redeemed, gift_card})
-
+        res.status(200).json({message: `You have successfully redeemed your reward. \n  You will receive your gift card via email in the next 12h, please make sure to check your spam if not received. 
+        You can also can view your reward in your profile under "My Rewards".`});
 
     } catch (error) {
-        res.status(500).json({error});
+        console.log(error)
+        res.status(500).json(error);
+    }
+}
+
+
+exports.setRedeemedPrize = async (req, res) => {
+    try {
+        console.log(req.body)
+
+        //Check if the redem is available
+        const redeem = await prisma.redeem.findFirst({where: {id: parseInt(req.body.redeemId)}});
+        if (!redeem) return res.status(401).json({message: `Redeem Object not found`});
+
+        //Check if the gift card is available
+        const gift_card = await prisma.giftCard.findFirst({where: {id: parseInt(req.body.giftCardId)}});
+        if (!gift_card) return res.status(401).json({message: `Sorry this giftcard was not found.`});
+
+        //update the redeem object with the giftcard id
+        const redeemed = await prisma.redeem.update({where: { id: parseInt(id) },  data:{giftCardId:gift_card.id}})
+
+        res.status(200).json({message: `You have successfully set the reward.`});
+
+        //update the gift card object with the giftcard id
+        // await updateGiftCard(req, res,{redeemed, gift_card})
+    } catch (error) {
+        console.log(error)
+        res.status(500).json(error);
     }
 }
 
@@ -130,11 +158,12 @@ async function updateGiftCard(req, res, {redeemed, gift_card}) {
 
         console.log(updated)
 
-        res.status(200).json({message: `You have successfully redeemed your reward. \n  You can view your reward in your "My Rewards". We'll also send you an email with your gift voucher, please make sure to check your spam if not received.\n.`});
+        res.status(200).json({message: `You have successfully redeemed your reward. \n  You will receive your gift card via email in the next 12h, please make sure to check your spam if not received. 
+        You can also can view your reward in your profile under "My Rewards".`});
     } catch (error) {
         // delete the redeemed if it fails to update the giftcard table
         await prisma.redeem.delete({where: {id: redeemed.id}})
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 }
 
