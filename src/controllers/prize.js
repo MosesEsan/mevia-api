@@ -33,7 +33,7 @@ exports.index = async (req, res) => {
         res.set('X-Total-Count', prizes.length)
         res.status(200).json(prizes)
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 }
 
@@ -63,7 +63,7 @@ exports.read = async function (req, res) {
 
         res.status(200).json(prize);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
@@ -79,7 +79,7 @@ exports.update = async function (req, res) {
         const prize = await prisma.prize.update({where: { id: parseInt(id) }, data})
         res.status(200).json(prize);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
@@ -90,7 +90,7 @@ exports.redeem = async (req, res) => {
         let message = "";
         let remaining_points = 0
 
-        const user = UserController.get_user_stats(req.user);
+        const user = await UserController.get_user_stats(req.user);
         const prize = await prisma.prize.findFirst({where: {id: parseInt(req.body.prize_id)}});
 
         if (prize){
@@ -105,7 +105,7 @@ exports.redeem = async (req, res) => {
 
         res.status(200).json({can_redeem, message, user_points:user.points, remaining_points })
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 }
 
@@ -145,7 +145,7 @@ async function saveClaim(req, res, new_claim) {
     } catch (error) {
         // delete the prizeclaim if it fails to update the weekly prize table
         await prisma.prizeClaim.delete({where: {id: new_claim.id}})
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 }
 

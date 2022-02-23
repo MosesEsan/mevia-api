@@ -82,8 +82,8 @@ exports.index = async function (req, res) {
             title: "How to play",
             data:[
                 "Earn points by playing the daily challenges at 9am, 1pm and 6pm.",
-                "Each challenge stays active for 3 hours and has a set number of games available.",
-                "Play as many games as you want until time or point run out.",
+                "Each challenge stays active for 3 hours.",
+                "Play as many games as you want until time runs out.",
                 "There's a 30 minutes time out for each user after each game."
             ]
         }
@@ -109,7 +109,7 @@ exports.index = async function (req, res) {
         res.status(200).json(data);
     } catch (error) {
         console.log(error)
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 
 };

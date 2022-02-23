@@ -3,7 +3,7 @@ const prisma = require('../config/prisma')
 const QuestionController = require('../controllers/question');
 const TournamentController = require('../controllers/tournament');
 
-const {checkAnswers, getNextTournamentGameTime} = require("../utils/check-game");
+const {checkAnswers, getNextGameTime} = require("../utils/check-game");
 const pusher = require("../config/pusher");
 const {slugify, shuffle} = require("../utils/slugify");
 
@@ -103,7 +103,6 @@ async function checkModePoints(mode) {
         return points;
 
     } catch (error) {
-        console.log(error)
         return null;
     }
 
@@ -128,7 +127,7 @@ const store = async function (req, res, tournament, tournament_mode_id) {
         }
 
         //calculate the time for the next game
-        let next_game = getNextTournamentGameTime(tournament.end_time);
+        let next_game = getNextGameTime(tournament.end_time);
         if (next_game !== null) tournament_game['nextGameAt'] = next_game;
 
         //create the game
@@ -258,7 +257,11 @@ exports.activity = async function (req, res) {
 exports.validate = async function (req, res) {
     const {game_id, questions} = req.body;
 
+    try {
     const game = await prisma.tournamentGame.findFirst({where: {id: game_id}})
+    } catch (error) {
+        res.status(500).json(error)
+    }
     if (!game) return res.status(404).json({success: false, error: {message: "Tournament Game does not exist!"}});
 
     if (game.submittedAt === null) {
@@ -311,7 +314,7 @@ exports.user_games = async function (req, res) {
 
         res.status(200).json(games);
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 

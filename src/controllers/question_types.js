@@ -54,6 +54,6 @@ exports.update = async function (req, res) {
         const questiontype = await prisma.questionType.update({where: { id: parseInt(id) }, data})
         res.status(200).json(questiontype);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };

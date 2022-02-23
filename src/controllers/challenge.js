@@ -76,7 +76,7 @@ exports.check = async function (req, res) {
         //     res.status(401).json({error: {message: "No Challenges available."}})
         // }
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
@@ -147,7 +147,7 @@ async function checkChallenges(user_id, weekly_challenge) {
                 challenge_start_time = startTime
                 challenge_end_time = endTime
                 challenge_time_left =  endTime.valueOf() - check.valueOf();
-                challenge_description = "Take part in daily challenges and be in a chance to win one of the weekly prizes.";
+                challenge_description = "Take part in daily challenges and win points to be use towards one of the available rewards.";
 
                 current_challenge = {
                     challenge_no,
@@ -167,7 +167,7 @@ async function checkChallenges(user_id, weekly_challenge) {
                     challenge_start_time:startTime,
                     challenge_end_time:endTime,
                     challenge_time_left,
-                    challenge_description:"Take part in daily challenges and be in a chance to win one of the weekly prizes.",
+                    challenge_description:"Take part in daily challenges and win points to be use towards one of the available rewards.",
                 }
             }
         })

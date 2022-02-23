@@ -28,7 +28,7 @@ exports.index = async function (req, res) {
         res.status(200).json({success: true, data});
     } catch (error) {
         logger.error(error);
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 

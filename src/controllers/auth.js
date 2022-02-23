@@ -26,7 +26,7 @@ exports.register = async (req, res) => {
         // await sendVerificationCode(user, req, res);
         await addPoints(user, req, res);
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
@@ -43,7 +43,7 @@ exports.login = async (req, res) => {
 
         await sendVerificationCode(user, req, res);
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
@@ -97,7 +97,7 @@ exports.resendToken = async (req, res) => {
 
         await sendVerificationCode(user, req, res);
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
@@ -114,7 +114,7 @@ async function sendVerificationCode(user, req, res) {
         res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
     } catch (error) {
         logger.error(error);
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 }
 

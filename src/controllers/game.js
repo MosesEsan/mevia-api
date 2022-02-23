@@ -201,7 +201,7 @@ exports.validate = async function (req, res) {
 
             res.status(200).json({success: true, game: updatedGame, message: "Congratulations"})
         } catch (error) {
-            res.status(500).json({error})
+            res.status(500).json(error)
         }
     } else {
         res.status(404).json({error: {message: "This game has previously been validated!"}});
@@ -229,7 +229,7 @@ exports.user_games = async function (req, res) {
 
         res.status(200).json(games);
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 

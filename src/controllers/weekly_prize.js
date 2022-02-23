@@ -27,7 +27,7 @@ exports.create = async (req, res) => {
         const prize = await prisma.weeklyPrize.create({data: {...req.body}})
         res.status(200).json(prize)
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
@@ -114,6 +114,6 @@ exports.challenge_prizes = async function (req, res) {
         if (challenge && challenge.WeeklyPrize.length > 0) res.status(200).json(challenge.WeeklyPrize)
         else res.status(401).json({error: {message: "No Prizes available."}})
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };

@@ -18,7 +18,7 @@ exports.store = async function (req, res) {
 
         res.status(200).json(push_notification)
     }catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 }
 
@@ -31,7 +31,7 @@ exports.update = async function (req, res, active =false) {
 
         res.status(200).json(notification)
     }catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 }
 
