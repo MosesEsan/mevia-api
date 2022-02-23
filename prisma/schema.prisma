@@ -12,26 +12,31 @@ datasource db {
 }
 
 model User {
-  id                   Int                @id @default(autoincrement())
-  username             String             @unique
-  countryCode          String             @map("country_code")
-  phoneNumber          String             @unique @map("phone_number")
-  formattedPhoneNumber String             @unique @map("formatted_phone_number")
+  id                   Int      @id @default(autoincrement())
+  username             String   @unique
+  fullName             String?  @map("full_name")
+  email                String?
+  countryCode          String   @map("country_code")
+  phoneNumber          String   @unique @map("phone_number")
+  formattedPhoneNumber String   @unique @map("formatted_phone_number")
   image                String?
-  userType             UserType           @relation(fields: [userTypeId], references: [id])
-  userTypeId           Int                @map("user_type_id")
-  Game                 Game[]
-  UserPoints           UserPoints[]
-  WeeklyPrize          WeeklyPrize[]
-  PrizeClaim           PrizeClaim[]
-  PushNotification     PushNotification[]
-  TournamentUser       TournamentUser[]
-  TournamentGame       TournamentGame[]
-  TournamentPrize      TournamentPrize[]
-  TournamentWinner     TournamentWinner[]
-  TournamentReward     TournamentReward[]
-  DailyReward          DailyReward[]
-  Redeem               Redeem[]
+  userType             UserType @relation(fields: [userTypeId], references: [id])
+  userTypeId           Int      @map("user_type_id")
+
+  createdAt DateTime @default(now())
+
+  Game             Game[]
+  UserPoints       UserPoints[]
+  WeeklyPrize      WeeklyPrize[]
+  PrizeClaim       PrizeClaim[]
+  PushNotification PushNotification[]
+  TournamentUser   TournamentUser[]
+  TournamentGame   TournamentGame[]
+  TournamentPrize  TournamentPrize[]
+  TournamentWinner TournamentWinner[]
+  TournamentReward TournamentReward[]
+  DailyReward      DailyReward[]
+  Redeem           Redeem[]
 }
 
 model Question {
@@ -78,7 +83,7 @@ model Game {
   skipped         Int?
   percent         Float?
   initiatedAt     DateTime       @default(now())
-  nextGameAt      DateTime?      @db.Time(3)
+  nextGameAt      DateTime?      @map("next_game_at")
   submittedAt     DateTime?
   gameQuestions   GameQuestion[]
 }
@@ -117,6 +122,7 @@ model Tournament {
   id                  Int                  @id @default(autoincrement())
   name                String
   description         String?
+  image               String?
   start_date          DateTime             @db.Date
   end_date            DateTime             @db.Date
   registration_closes DateTime
@@ -236,7 +242,6 @@ model TournamentPrize {
   userId           Int?
   TournamentWinner TournamentWinner[]
   TournamentReward TournamentReward[]
-  GiftCard         GiftCard[]
   @@map("tournament_prize")
 }
 
@@ -320,8 +325,7 @@ model Brand {
   city    String
   eircode String?
 
-  createdAt DateTime   @default(now())
-  GiftCard  GiftCard[]
+  createdAt DateTime @default(now())
   Ad        Ad[]
   Reward    Reward[]
 }
@@ -368,15 +372,14 @@ model Redeem {
   Reward   Reward @relation(fields: [rewardId], references: [id])
   rewardId Int
 
-  createdAt DateTime   @default(now())
-  GiftCard  GiftCard[]
+  GiftCard   GiftCard? @relation(fields: [giftCardId], references: [id])
+  giftCardId Int?
+
+  createdAt DateTime @default(now())
 }
 
 model GiftCard {
   id Int @id @default(autoincrement())
-
-  TournamentPrize   TournamentPrize? @relation(fields: [tournamentPrizeId], references: [id])
-  tournamentPrizeId Int?
 
   Reward   Reward @relation(fields: [rewardId], references: [id])
   rewardId Int
@@ -384,13 +387,9 @@ model GiftCard {
   value Int
   code  String
 
-  Redeem   Redeem? @relation(fields: [redeemId], references: [id])
-  redeemId Int?
-
   createdAt DateTime @default(now())
 
-  Brand   Brand? @relation(fields: [brandId], references: [id])
-  brandId Int?
+  Redeem Redeem[]
   @@map("gift_card")
 }
 
@@ -404,6 +403,8 @@ model Ad {
   cta   String
   url   String
   color String
+
+  active Boolean? @default(false)
 
   createdAt DateTime @default(now())
 }
@@ -515,12 +516,12 @@ model UserType {
 }
 
 model UserPoints {
-  id         Int      @id @default(autoincrement())
-  created_at DateTime @default(now())
-  source     Source   @default(REGISTRATION)
-  points     Int
-  User       User     @relation(fields: [userId], references: [id])
-  userId     Int      @map("user_id")
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  source    Source   @default(REGISTRATION)
+  points    Int
+  User      User     @relation(fields: [userId], references: [id])
+  userId    Int      @map("user_id")
 
   @@map("user_points")
 }
