@@ -5,9 +5,9 @@ const prisma = require('../config/prisma')
 // @access Public
 exports.index = async (req, res) => {
     try {
-        const ads = await prisma.ad.findFirst()
+        const ads = await prisma.ad.findFirst({where: {active: true}})
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
-        res.set('X-Total-Count', ads.length)
+        // res.set('X-Total-Count', ads.length)
         res.status(200).json(ads)
     } catch (error) {
         throw error
@@ -64,7 +64,7 @@ exports.update = async function (req, res) {
 
         res.status(200).json(reward);
     } catch (error) {
-        res.status(500).json({error});
+        res.status(500).json(error);
     }
 };
 
