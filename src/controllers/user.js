@@ -174,7 +174,7 @@ exports.get_user_points = async function (req, res) {
                 },
             },
             select: {
-                created_at: true,
+                createdAt: true,
                 points: true
             }
         });
@@ -184,7 +184,7 @@ exports.get_user_points = async function (req, res) {
                 type: "welcome",
                 text: "Welcome Gift",
                 points: obj["points"],
-                date: obj.created_at,
+                date: obj.createdAt,
                 deduct: false
             })
         })
@@ -195,7 +195,7 @@ exports.get_user_points = async function (req, res) {
                 source: "TOURNAMENT"
             },
             select: {
-                created_at: true,
+                createdAt: true,
                 points: true
             }
         });
@@ -205,7 +205,7 @@ exports.get_user_points = async function (req, res) {
                 type: "tournament_registration",
                 text: "Tournament Registration",
                 points: obj["points"],
-                date: obj.created_at,
+                date: obj.createdAt,
                 deduct: true
             })
         })
