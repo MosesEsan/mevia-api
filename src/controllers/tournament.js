@@ -67,6 +67,7 @@ const check_tournament = async function (req, res) {
                 TournamentPrize: {
                     include: {
                         Prize: true,
+                        // Reward: true,
                         TournamentWinner: true
                     },
                 },
@@ -92,8 +93,6 @@ const check_tournament = async function (req, res) {
 
             if (tournament && tournament.TournamentPrize.length > 0) {
                 let tournament_active = check_tournament_active(tournament)
-                let {has_ended} = tournament_active
-
 
                 tournament = {...tournament, ...tournament_active}
 
@@ -121,7 +120,7 @@ const check_tournament = async function (req, res) {
         }
         return res.status(200).json(all_tournaments)
     } catch (error) {
-        res.status(500).json({error: error.message})
+        res.status(500).json(error)
     }
 };
 exports.check_tournament = check_tournament;
@@ -236,6 +235,7 @@ async function check_tournament_stats(tournament_id, user_id) {
             TournamentPrize: {
                 include: {
                     Prize: true,
+                    // Reward: true,
                     TournamentWinner: {
                         include: {
                             User: {
@@ -292,6 +292,10 @@ async function check_tournament_stats(tournament_id, user_id) {
     //Get the available points
     let available_points = await get_available_points(tournament.id)
 
+    //Check if the user is registered
+    tournament = await checkTournamentRegistration(user_id, tournament);
+    tournament_active['is_registered'] = tournament.is_registered;
+
     //Check if there is a game available for this user
     let tournament_game_check = await checkTournamentGame(user_id, tournament.id);
     tournament_active['next_game'] = tournament_game_check.next_game;
@@ -332,8 +336,9 @@ exports.register_for_tournament = async function (req, res) {
             //check if user has enough points
             let can_register = false;
 
-            const user = UserController.get_user_stats(req.user);
+            const user = await UserController.get_user_stats(req.user);
             let points_required = parseInt(tournament.entry_fee);
+
             if (user.points >= points_required) can_register = true;
 
             if (!can_register) return res.status(401).json({message: `You need ${points_required} points to register..`});
@@ -351,7 +356,7 @@ exports.register_for_tournament = async function (req, res) {
             return res.status(401).json({type: "closed", message: "Registration for this tournament has closed."});
         }
     } catch (error) {
-        res.status(500).json(error)
+        res.status(500).json({type: "error", message: error.message})
     }
 };
 
@@ -370,7 +375,7 @@ exports.tournament_leaderboard = async function (req, res) {
     try {
         let type = (req.body.type) ? req.body.type : "points";
 
-        let leaderboard = await runQuery(type)
+        let leaderboard = await runQuery(type, req.body.tournament_id)
 
         let top_leaders = []
         leaderboard.map((user, idx) => {
@@ -387,12 +392,12 @@ exports.tournament_leaderboard = async function (req, res) {
 
         res.status(200).json({success: true, data});
     } catch (error) {
-        res.status(500).json({error})
+        res.status(500).json(error)
     }
 };
 
 
-async function runQuery(type, limit=10) {
+async function runQuery(type, tournament_id, limit=10) {
     try {
         let leaderboard = null;
 
@@ -402,7 +407,7 @@ async function runQuery(type, limit=10) {
             "SELECT * FROM(" +
             "SELECT user_id, COUNT(*) AS no_of_games_played " +
             "FROM tournament_game tg " +
-            "WHERE tg.submitted_at IS NOT NULL " +
+            "WHERE tg.tournament_id = "+tournament_id+" AND tg.submitted_at IS NOT NULL " +
             "GROUP BY user_id) as e WHERE no_of_games_played > 2) as tu"
 
 
@@ -414,7 +419,7 @@ async function runQuery(type, limit=10) {
             "INNER JOIN question ON gq.questionId = question.id " +
             "INNER JOIN question_type qt ON question.questionTypeId = qt.id " +
             "INNER JOIN user ON tournament_game.user_id = user.id " +
-            "WHERE tournament_game.submitted_at IS NOT NULL " +
+            "WHERE tournament_game.tournament_id = "+tournament_id+" AND tournament_game.submitted_at IS NOT NULL " +
             "GROUP BY user_id " +
             "ORDER BY points_obtained desc " +
             "LIMIT 1) as e"
@@ -427,7 +432,7 @@ async function runQuery(type, limit=10) {
             "FROM tournament_question tq " +
             "INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id " +
             "INNER JOIN user ON tournament_game.user_id = user.id " +
-            "WHERE tq.correct IS NOT NULL AND tournament_game.user_id " +
+            "WHERE tournament_game.tournament_id = "+tournament_id+" AND  tq.correct IS NOT NULL AND tournament_game.user_id " +
             "NOT IN (SELECT user_id FROM(" + best_points_query + ") as bt) " +
             "GROUP BY user_id " +
             "ORDER BY average_time_per_question asc " +
@@ -510,7 +515,6 @@ async function runQuery(type, limit=10) {
 
 
 async function deductPoints(req, res, tournament, tournament_user) {
-
     try {
         await prisma.userPoints.create({
             data: {
@@ -544,7 +548,6 @@ async function get_available_points(tournament_id) {
                 tournamentId: parseInt(tournament_id),
                 submittedAt: null,
                 initiatedAt: {gt: new Date(today)},
-                // nextGameAt: {gt: new Date(today)},
             },
             _sum: {
                 pointsAvailable: true,
@@ -598,7 +601,7 @@ function extractWinners(prizes) {
         let all_winners = [];
         prizes.map((obj, idx) => {
             let position = obj.position;
-            let prize = obj.Prize;
+            let prize = obj.Prize; //obj.Reward;
             let winners = obj.TournamentWinner;
 
             all_prizes.push(prize)
@@ -645,7 +648,7 @@ async function formatMode(modes) {
             modes[j]["points"] = points
 
             bonus = bonus > 0 ? `+ ${bonus} bonus` : "";
-            modes[j]["questions"] = `${questions} ${bonus}`
+            modes[j]["questions"] = `${questions} questions ${bonus}`
 
         }
 
@@ -756,6 +759,7 @@ exports.user_rewards = async function (req, res) {
                 TournamentPrize: {
                     include: {
                         Prize: true,
+                        // Reward: true,
                         Tournament: true,
                         GiftCard: true,
                     },
@@ -777,7 +781,7 @@ function formatRewards(rewards) {
 
         obj["tournament"] = tournament_prize["Tournament"]
 
-        let prize = tournament_prize["Prize"]
+        let prize = tournament_prize["Prize"] // ["Reward"]
         delete prize["id"]
         obj["TournamentPrize"] = {...tournament_prize, ...prize}
 
@@ -785,7 +789,7 @@ function formatRewards(rewards) {
         obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
 
         delete obj["TournamentPrize"]["GiftCard"]
-        delete obj["TournamentPrize"]["Prize"]
+        delete obj["TournamentPrize"]["Prize"] //["Reward"]
     });
 
     return rewards;

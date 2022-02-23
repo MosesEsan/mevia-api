@@ -49,6 +49,7 @@ router.post('/new', [
 //CHECK
 // router.get('/leaderboard', [], validate, Tournament.tournament_leaderboard);
 router.post('/leaderboard', [
+    check('tournament_id').not().isEmpty().withMessage('The tournament id is required'),
     check('type').not().isEmpty().withMessage('The type is required'),
 ], Tournament.tournament_leaderboard);
 
