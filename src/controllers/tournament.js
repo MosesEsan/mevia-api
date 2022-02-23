@@ -54,7 +54,7 @@ exports.update = async function (req, res) {
 // @access Public
 const check_tournament = async function (req, res) {
     try {
-        let today = moment();
+/*        let today = moment();
         today = today.format("YYYY-MM-DD");
         today = moment(today).subtract(7, 'days');
 
@@ -117,13 +117,91 @@ const check_tournament = async function (req, res) {
                 delete tournament["TournamentUser"]
                 delete tournament["TournamentMode"]
             }
-        }
+        }*/
+
+        const all_tournaments = checkTournaments(req.user.id)
         return res.status(200).json(all_tournaments)
     } catch (error) {
         res.status(500).json(error)
     }
 };
 exports.check_tournament = check_tournament;
+
+
+async function checkTournaments(user_id) {
+    try {
+        let today = moment();
+        today = today.format("YYYY-MM-DD");
+        today = moment(today).subtract(7, 'days');
+
+        const tournaments = await prisma.tournament.findMany({
+            where: {
+                // start_date: {lte: new Date(today)},
+                end_date: {gte: new Date(today)},
+            },
+            include: {
+                TournamentPrize: {
+                    include: {
+                        Prize: true,
+                        // Reward: true,
+                        TournamentWinner: true
+                    },
+                },
+                TournamentMode: true,
+                TournamentCategory: true,
+                TournamentUser: {
+                    include: {
+                        User: {
+                            select: {
+                                username: true,
+                                image: true
+                            }
+                        }
+                    },
+                }
+            },
+            orderBy: {created_at: 'asc'}
+        });
+
+        const all_tournaments = []
+        for (let i = 0; i < tournaments.length; i++) {
+            let tournament = tournaments[i];
+
+            if (tournament && tournament.TournamentPrize.length > 0) {
+                let tournament_active = check_tournament_active(tournament)
+
+                tournament = {...tournament, ...tournament_active}
+
+                tournament["users"] = await formatUser(tournament.TournamentUser);
+                let modes = await formatMode(tournament.TournamentMode);
+                if (modes.length > 0) {
+                    tournament["modes"] = modes;
+                    let result = extractWinners(tournament.TournamentPrize);
+                    tournament = {...tournament, ...result}
+
+                    try {
+                        tournament = await checkTournamentRegistration(user_id, tournament);
+                        tournament["available_spaces"] = await getAvailableSpaces(tournament.id)
+                        tournament["is_registration_open"] = checkRegistrationOpen(tournament);
+                    } catch (error) {
+                        console.log(error)
+                    }
+
+                    all_tournaments.push(tournament)
+                }
+
+                delete tournament["TournamentUser"]
+                delete tournament["TournamentMode"]
+            }
+        }
+        return all_tournaments
+    } catch (error) {
+        throw error
+    }
+}
+exports.checkTournaments = checkTournaments;
+
+
 
 
 function check_tournament_active(tournament) {
@@ -459,7 +537,7 @@ async function runQuery(type, tournament_id, limit=10) {
             INNER JOIN question ON gq.questionId = question.id 
             INNER JOIN question_type qt ON question.questionTypeId = qt.id
             INNER JOIN user ON tournament_game.user_id = user.id
-            WHERE tournament_game.submitted_at IS NOT NULL
+            WHERE tournament_game.tournament_id = ${tournament_id} AND tournament_game.submitted_at IS NOT NULL
             GROUP BY user_id
             ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id 
             LEFT JOIN (

@@ -2,6 +2,7 @@ const {PrismaClient} = require('@prisma/client')
 const moment = require("moment");
 const UserController = require("./user");
 const ChallengeController = require("./challenge");
+const TournamentController = require("./tournament");
 const LeaderBoardController = require("./leaderboard");
 
 const prisma = new PrismaClient()
@@ -38,6 +39,17 @@ exports.index = async function (req, res) {
             // }
         } catch (error) {
             challenge_error = error
+        }
+
+        //Tournaments - TournamentsCard
+        let tournaments = null;
+        let tournaments_error = null;
+        try {
+            tournaments = await TournamentController.checkTournaments(user_id);
+            console.log(tournaments)
+        } catch (error) {
+            console.log("error")
+            tournaments_error = error
         }
 
         //Leaderboard - WinnersCard
@@ -103,6 +115,7 @@ exports.index = async function (req, res) {
             challenge, challenge_error,
             leaderboard, leaderboard_error, leaderboard_title,
             prizes, prizes_error,
+            tournaments, tournaments_error,
             panels
         }
 

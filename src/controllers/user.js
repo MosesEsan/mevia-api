@@ -43,9 +43,9 @@ exports.update = async function (req, res) {
         const id = req.params.id;
 
         //Make sure the passed id is that of the logged in user
-        if (user_id.toString() !== id.toString()) return res.status(401).json({error :{message: "Sorry, you don't have the permission to update this data."}});
+        if (user_id.toString() !== id.toString()) return res.status(401).json({error: {message: "Sorry, you don't have the permission to update this data."}});
 
-        const user = await prisma.user.update({where: { id: parseInt(id) }, data})
+        const user = await prisma.user.update({where: {id: parseInt(id)}, data})
         res.status(200).json(user);
     } catch (error) {
 
@@ -56,7 +56,7 @@ exports.update = async function (req, res) {
 
 
 const get_user_stats = async (user) => {
-    try{
+    try {
         //Get The Game Points
         const game_points = await prisma.game.aggregate({
             where: {
@@ -107,37 +107,57 @@ const get_user_stats = async (user) => {
         });
         let daily_rewards_points = daily_reward_points._sum.points
 
+        //Get The Redeemed Points
+        const redeems_points = await prisma.redeem.findMany({
+            where: {userId: parseInt(user.id)},
+            include: {
+                Reward: {
+                    select: {
+                        points: true
+                    },
+                },
+            },
+        });
+        let total_redeems_points = 0;
+        redeems_points.map((redeem, idx) => {
+            total_redeems_points = total_redeems_points+redeem.Reward.points
+        })
+
+        console.log(redeems_points)
+        console.log(total_redeems_points)
+
 
         let current = null
         let next = null
         const user_types = await prisma.userType.findMany();
         user_types.map((user_type, idx) => {
-            if (current === null && user_type.minGames <= no_of_games){
+            if (current === null && user_type.minGames <= no_of_games) {
                 current = user_type;
-            }else if (current !== null && user_type.minGames <= no_of_games && (user_type.minGames > current.minGames) ){
+            } else if (current !== null && user_type.minGames <= no_of_games && (user_type.minGames > current.minGames)) {
                 current = user_type;
-            }else if (current !== null && next === null && user_type.minGames > no_of_games ){
+            } else if (current !== null && next === null && user_type.minGames > no_of_games) {
                 next = user_type;
             }
         })
 
         let user_type = {current, next}
 
-        let users_points = user_points._sum.points - tournament_points._sum.points
+        let users_points = user_points._sum.points - tournament_points._sum.points - total_redeems_points
 
         user['points'] = games_points + users_points + daily_rewards_points;
         user['no_of_games'] = no_of_games;
         user['user_type'] = user_type;
 
         return user;
-    }catch (e) {
+    } catch (e) {
+        console.log(e)
         throw e;
     }
 }
 
 
 exports.get_user_points = async function (req, res) {
-    try{
+    try {
         let user = req.user;
 
         let all_points = []
@@ -229,19 +249,42 @@ exports.get_user_points = async function (req, res) {
             })
         })
 
+        //Get The Redeemed Points
+        const redeems = await prisma.redeem.findMany({
+            where: {userId: parseInt(user.id)},
+            include: {
+                Reward: {
+                    select: {
+                        createdAt: true,
+                        points: true
+                    }
+                }
+            }
+        });
+
+        redeems.map((obj, idx) => {
+            all_points.push({
+                type: "redeem",
+                text: obj["Reward"]["name"],
+                points: obj["Reward"]["points"],
+                date: obj.createdAt,
+                deduct: true
+            })
+        })
+
         all_points.sort(function (a, b) {
-            var dateA = new Date(a.date), dateB = new Date(b.date)
+            let dateA = new Date(a.date), dateB = new Date(b.date)
             return dateA - dateB
         });
 
         res.status(200).json(all_points.reverse());
-    }catch (e) {
+    } catch (e) {
         throw e;
     }
 }
 
 const get_user_games_stats = async (user) => {
-    try{
+    try {
         const games_played = await prisma.game.aggregate({
             where: {
                 userId: parseInt(user.id),
@@ -251,7 +294,7 @@ const get_user_games_stats = async (user) => {
         });
 
         return games_played._count.id;
-    }catch (e) {
+    } catch (e) {
         throw e;
     }
 }
@@ -304,7 +347,7 @@ const get_user_rank = async function (user) {
             ORDER BY points_obtained desc, no_of_games_played desc
         ) as f , (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
 
-        if (userRank.length > 0){
+        if (userRank.length > 0) {
             let user_rank = userRank[0]
             user = {...user, ...user_rank}
         }
@@ -322,11 +365,11 @@ const get_user_rank = async function (user) {
 // @access Public
 exports.profile_image = async function (req, res) {
     try {
-        if (!req.file)  return res.status(400).json({error: {message: 'No files were uploaded.'}});
+        if (!req.file) return res.status(400).json({error: {message: 'No files were uploaded.'}});
 
         const id = req.params.id;
 
-        const user = await prisma.user.update({where: { id: parseInt(id) }, data:{image:req.file.path}})
+        const user = await prisma.user.update({where: {id: parseInt(id)}, data: {image: req.file.path}})
 
         res.status(200).json(user);
     } catch (e) {
@@ -334,7 +377,6 @@ exports.profile_image = async function (req, res) {
         res.status(500).json({success: false, message: e.message})
     }
 };
-
 
 
 exports.get_user_stats = get_user_stats;
