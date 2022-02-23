@@ -94,8 +94,6 @@ exports.redeem = async (req, res) => {
     try {
         let can_redeem = false;
 
-        console.log(req.body)
-
         const user = await UserController.get_user_stats(req.user);
         const reward = await prisma.reward.findFirst({where: {id: parseInt(req.body.reward_id)},
             include:{
@@ -127,8 +125,6 @@ exports.redeem = async (req, res) => {
 
 exports.setRedeemedPrize = async (req, res) => {
     try {
-        console.log(req.body)
-
         //Check if the redem is available
         const redeem = await prisma.redeem.findFirst({where: {id: parseInt(req.body.redeemId)}});
         if (!redeem) return res.status(401).json({message: `Redeem Object not found`});
@@ -156,8 +152,6 @@ async function updateGiftCard(req, res, {redeemed, gift_card}) {
             where: {id: parseInt(gift_card.id)},
             data: {redeemId: redeemed.id}})
 
-        console.log(updated)
-
         res.status(200).json({message: `You have successfully redeemed your reward. \n  You will receive your gift card via email in the next 12h, please make sure to check your spam if not received. 
         You can also can view your reward in your profile under "My Rewards".`});
     } catch (error) {
@@ -184,12 +178,9 @@ exports.user_rewards = async function (req, res) {
         })
 
         rewards = formatRewards(rewards)
-        console.log(rewards)
         res.status(200).json(rewards);
     } catch (error) {
-        console.log("===")
         console.log(error)
-        console.log("===")
         res.status(500).json(error)
     }
 };
