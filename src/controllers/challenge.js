@@ -86,13 +86,10 @@ async function checkWeeklyChallenge() {
     let start = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
     let end = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm');
 
-    start = moment(start)
-    end = moment(end)
-
     return await prisma.weeklyChallenge.findFirst({
         where: {
-            // startDate: new Date(start),
-            // endDate: {lte: new Date(end)},
+            // startDate: new Date(moment(start)),
+            // endDate: {lte: new Date(moment(end))},
         },
         include: {WeeklyPrize: true},
         orderBy: {createdAt: 'asc'}

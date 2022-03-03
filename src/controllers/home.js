@@ -46,9 +46,7 @@ exports.index = async function (req, res) {
         let tournaments_error = null;
         try {
             tournaments = await TournamentController.checkTournaments(user_id);
-            console.log(tournaments)
         } catch (error) {
-            console.log("error")
             tournaments_error = error
         }
 
