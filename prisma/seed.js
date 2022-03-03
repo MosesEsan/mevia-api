@@ -26,6 +26,111 @@ async function main() {
             points: 750
         },
     })
+    const bonus = await prisma.questionType.upsert({
+        where: {name: 'bonus'},
+        update: {},
+        create: {
+            name: 'bonus',
+            points: 1000
+        },
+    })
+
+    // GAME MODE
+    const easy_game_mode = await prisma.gameMode.upsert({
+        where: {name: 'easy'},
+        update: {},
+        create: {
+            name: 'easy',
+            lives: 0,
+            easy: 10,
+            intermediate: 0,
+            hard: 0,
+            bonus: 0
+        },
+    })
+
+    const intermediate_game_mode = await prisma.gameMode.upsert({
+        where: {name: 'intermediate'},
+        update: {},
+        create: {
+            name: 'intermediate',
+            lives: 3,
+            easy: 0,
+            intermediate: 5,
+            hard: 5,
+            bonus: 1
+        },
+    })
+
+    const mixed_game_mode = await prisma.gameMode.upsert({
+        where: {name: 'mixed'},
+        update: {},
+        create: {
+            name: 'mixed',
+            lives: 5,
+            easy: 5,
+            intermediate: 5,
+            hard: 5,
+            bonus: 2
+        },
+    })
+
+    // REWARD TYPE
+    await prisma.rewardType.upsert({
+        where: {name: 'Gift Card'},
+        update: {},
+        create: {
+            name: 'Gift Card'
+        },
+    })
+
+    // QUESTION CATEGORY
+    await prisma.questionCategory.upsert({
+        where: {name: 'General'},
+        update: {},
+        create: {
+            name: 'General'
+        },
+    })
+
+    await prisma.questionCategory.upsert({
+        where: {name: 'Entertainment'},
+        update: {},
+        create: {
+            name: 'Entertainment'
+        },
+    })
+    await prisma.questionCategory.upsert({
+        where: {name: 'Ireland'},
+        update: {},
+        create: {
+            name: 'Ireland'
+        },
+    })
+    await prisma.questionCategory.upsert({
+        where: {name: 'Irish History'},
+        update: {},
+        create: {
+            name: 'Ireland'
+        },
+    })
+    await prisma.questionCategory.upsert({
+        where: {name: 'Religion'},
+        update: {},
+        create: {
+            name: 'Religion'
+        },
+    })
+
+    await prisma.questionCategory.upsert({
+        where: {name: 'World War History'},
+        update: {},
+        create: {
+            name: 'World War History'
+        },
+    })
+
+    // USER TYPE
     const bronze = await prisma.userType.upsert({
         where: {name: 'bronze'},
         update: {},

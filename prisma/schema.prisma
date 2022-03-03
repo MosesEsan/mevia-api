@@ -32,7 +32,6 @@ model User {
   PushNotification PushNotification[]
   TournamentUser   TournamentUser[]
   TournamentGame   TournamentGame[]
-  TournamentPrize  TournamentPrize[]
   TournamentWinner TournamentWinner[]
   TournamentReward TournamentReward[]
   DailyReward      DailyReward[]
@@ -40,20 +39,19 @@ model User {
 }
 
 model Question {
-  id                 Int                  @id @default(autoincrement())
-  text               String
-  time               Int
-  choice_one         String               @db.Text
-  choice_two         String               @db.Text
-  choice_three       String               @db.Text
-  choice_four        String               @db.Text
-  answer             String
-  questionType       QuestionType         @relation(fields: [questionTypeId], references: [id])
-  questionTypeId     Int
-  QuestionCategory   QuestionCategory?    @relation(fields: [categoryId], references: [id])
-  categoryId         Int?
-  GameQuestion       GameQuestion[]
-  TournamentQuestion TournamentQuestion[]
+  id               Int               @id @default(autoincrement())
+  text             String
+  time             Int
+  choice_one       String            @db.Text
+  choice_two       String            @db.Text
+  choice_three     String            @db.Text
+  choice_four      String            @db.Text
+  answer           String
+  questionType     QuestionType      @relation(fields: [questionTypeId], references: [id])
+  questionTypeId   Int
+  QuestionCategory QuestionCategory? @relation(fields: [categoryId], references: [id])
+  categoryId       Int?
+  GameQuestion     GameQuestion[]
 }
 
 model ChallengeTime {
@@ -97,8 +95,8 @@ model GameQuestion {
   correct    Boolean?
   createdAt  DateTime @default(now())
 
-  TournamentGame   TournamentGame? @relation(fields: [tournamentGameId], references: [id])
-  tournamentGameId Int?
+  TournamentTriviaQuestions   TournamentTriviaQuestions? @relation(fields: [tournamentTriviaQuestionsId], references: [id])
+  tournamentTriviaQuestionsId Int?
   @@map("game_question")
 }
 
@@ -113,30 +111,30 @@ model Prize {
   UserType    UserType? @relation(fields: [userTypeId], references: [id])
   userTypeId  Int?      @map("user_type_id")
 
-  available       Boolean?          @default(false)
-  WeeklyPrize     WeeklyPrize[]
-  TournamentPrize TournamentPrize[]
+  available   Boolean?      @default(false)
+  WeeklyPrize WeeklyPrize[]
 }
 
 model Tournament {
-  id                  Int                  @id @default(autoincrement())
+  id                  Int      @id @default(autoincrement())
   name                String
   description         String?
   image               String?
-  start_date          DateTime             @db.Date
-  end_date            DateTime             @db.Date
+  start_date          DateTime @db.Date
+  end_date            DateTime @db.Date
   registration_closes DateTime
-  start_time          DateTime             @db.Time(3)
-  end_time            DateTime             @db.Time(3)
+  start_time          DateTime @db.Time(3)
+  end_time            DateTime @db.Time(3)
   daily_points        Int
   entry_fee           Int
   max_players         Int
-  created_at          DateTime             @default(now())
-  TournamentMode      TournamentMode[]
-  TournamentUser      TournamentUser[]
-  TournamentGame      TournamentGame[]
-  TournamentPrize     TournamentPrize[]
-  TournamentCategory  TournamentCategory[]
+  created_at          DateTime @default(now())
+
+  TournamentUser     TournamentUser[]
+  TournamentGame     TournamentGame[]
+  TournamentReward   TournamentReward[]
+  TournamentCategory TournamentCategory[]
+  TournamentMode     TournamentMode[]
 }
 
 model TournamentCategory {
@@ -151,13 +149,10 @@ model TournamentCategory {
   @@map("tournament_category")
 }
 
-model TournamentMode {
-  id   Int    @id @default(autoincrement())
-  name String
-
-  Tournament   Tournament @relation(fields: [tournamentId], references: [id])
-  tournamentId Int        @map("tournament_id")
-  lives        Int?
+model GameMode {
+  id    Int    @id @default(autoincrement())
+  name     String     @unique
+  lives Int
 
   easy         Int
   intermediate Int
@@ -165,6 +160,20 @@ model TournamentMode {
   bonus        Int
 
   TournamentGame TournamentGame[]
+  TournamentMode TournamentMode[]
+  @@map("game_mode")
+}
+
+model TournamentMode {
+  id Int @id @default(autoincrement())
+
+  Tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  tournamentId Int        @map("tournament_id")
+
+  GameMode       GameMode         @relation(fields: [gameModeId], references: [id])
+  gameModeId     Int              @map("game_mode_id")
+  TournamentGame TournamentGame[]
+
   @@map("tournament_mode")
 }
 
@@ -193,20 +202,40 @@ model TournamentGame {
   TournamentMode   TournamentMode @relation(fields: [tournamentModeId], references: [id])
   tournamentModeId Int            @map("tournament_mode_id")
 
-  timeAvailable   Int?           @map("time_available")
-  pointsAvailable Int?           @map("points_available")
-  pointsObtained  Int?           @map("points_obtained")
-  correctAnswers  Int?           @map("correct_answers")
-  wrongAnswers    Int?           @map("wrong_answers")
+  timeAvailable   Int?      @map("time_available")
+  pointsAvailable Int?      @map("points_available")
+  pointsObtained  Int?      @map("points_obtained")
+  correctAnswers  Int?      @map("correct_answers")
+  wrongAnswers    Int?      @map("wrong_answers")
   skipped         Int?
   percent         Float?
-  initiatedAt     DateTime       @default(now()) @map("initiated_at")
-  nextGameAt      DateTime?      @map("next_game_at")
-  submittedAt     DateTime?      @map("submitted_at")
-  gameQuestions   GameQuestion[]
+  initiatedAt     DateTime  @default(now()) @map("initiated_at")
+  nextGameAt      DateTime? @map("next_game_at")
+  submittedAt     DateTime? @map("submitted_at")
 
   TournamentQuestion TournamentQuestion[]
+  GameMode           GameMode?            @relation(fields: [gameModeId], references: [id])
+  gameModeId         Int?
   @@map("tournament_game")
+}
+
+model TournamentTriviaQuestions {
+  id                 Int                  @id @default(autoincrement())
+  text               String
+  time               Int
+  choice_one         String               @db.Text
+  choice_two         String               @db.Text
+  choice_three       String               @db.Text
+  choice_four        String               @db.Text
+  answer             String
+  questionType       QuestionType         @relation(fields: [questionTypeId], references: [id])
+  questionTypeId     Int
+  QuestionCategory   QuestionCategory?    @relation(fields: [categoryId], references: [id])
+  categoryId         Int?
+  GameQuestion       GameQuestion[]
+  TournamentQuestion TournamentQuestion[]
+
+  @@map("tournament_trivia_questions")
 }
 
 model TournamentQuestion {
@@ -217,23 +246,23 @@ model TournamentQuestion {
 
   time Int?
 
-  question   Question @relation(fields: [questionId], references: [id])
+  question   TournamentTriviaQuestions @relation(fields: [questionId], references: [id])
   questionId Int
   correct    Boolean?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime                  @default(now())
 
   @@map("tournament_question")
 }
 
-model TournamentPrize {
+model TournamentReward {
   id       Int @id @default(autoincrement())
   position Int
 
   Tournament   Tournament @relation(fields: [tournamentId], references: [id])
   tournamentId Int        @map("tournament_id")
 
-  Prize   Prize @relation(fields: [prizeId], references: [id])
-  prizeId Int
+  Reward   Reward @relation(fields: [rewardId], references: [id])
+  rewardId Int
 
   createdAt  DateTime     @default(now())
   PrizeClaim PrizeClaim[]
@@ -241,15 +270,14 @@ model TournamentPrize {
   User             User?              @relation(fields: [userId], references: [id])
   userId           Int?
   TournamentWinner TournamentWinner[]
-  TournamentReward TournamentReward[]
-  @@map("tournament_prize")
+  @@map("tournament_reward")
 }
 
 model TournamentWinner {
   id Int @id @default(autoincrement())
 
-  TournamentPrize   TournamentPrize @relation(fields: [tournamentPrizeId], references: [id])
-  tournamentPrizeId Int
+  TournamentReward   TournamentReward @relation(fields: [tournamentRewardId], references: [id])
+  tournamentRewardId Int
 
   User   User? @relation(fields: [userId], references: [id])
   userId Int?
@@ -258,26 +286,7 @@ model TournamentWinner {
   dateClaimed DateTime?
 
   createdAt DateTime @default(now())
-
-  TournamentPrizeClaim TournamentPrizeClaim[]
   @@map("tournament_winner")
-}
-
-model TournamentReward {
-  id Int @id @default(autoincrement())
-
-  TournamentPrize   TournamentPrize @relation(fields: [tournamentPrizeId], references: [id])
-  tournamentPrizeId Int
-
-  User   User? @relation(fields: [userId], references: [id])
-  userId Int?
-
-  claimed     Boolean   @default(false)
-  dateClaimed DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@map("tournament_reward")
 }
 
 model DailyReward {
@@ -290,29 +299,6 @@ model DailyReward {
   createdAt DateTime @default(now())
 
   @@map("daily_reward")
-}
-
-model TournamentPrizeClaim {
-  id                 Int              @id @default(autoincrement())
-  TournamentWinner   TournamentWinner @relation(fields: [tournamentWinnerId], references: [id])
-  tournamentWinnerId Int              @unique @map("tournament_winner_id")
-
-  fullname       String
-  phoneNumber    String  @map("phone_number")
-  addressLineOne String  @map("address_line_one")
-  addressLineTwo String? @map("address_line_two")
-  city           String
-  eircode        String?
-
-  sent     Boolean   @default(false)
-  dateSent DateTime?
-
-  delivered     Boolean   @default(false)
-  dateDelivered DateTime?
-
-  createdAt DateTime @default(now())
-
-  @@map("tournament_prize_claim")
 }
 
 model Brand {
@@ -358,9 +344,10 @@ model Reward {
 
   available Boolean? @default(false)
 
-  createdAt DateTime   @default(now())
-  GiftCard  GiftCard[]
-  Redeem    Redeem[]
+  createdAt        DateTime           @default(now())
+  GiftCard         GiftCard[]
+  Redeem           Redeem[]
+  TournamentReward TournamentReward[]
 }
 
 model Redeem {
@@ -479,9 +466,9 @@ model PrizeClaim {
   delivered     Boolean   @default(false)
   dateDelivered DateTime?
 
-  createdAt         DateTime         @default(now())
-  TournamentPrize   TournamentPrize? @relation(fields: [tournamentPrizeId], references: [id])
-  tournamentPrizeId Int?
+  createdAt          DateTime          @default(now())
+  TournamentReward   TournamentReward? @relation(fields: [tournamentRewardId], references: [id])
+  tournamentRewardId Int?
   @@map("prize_claim")
 }
 
@@ -491,7 +478,8 @@ model QuestionCategory {
 
   Question Question[]
 
-  TournamentCategory TournamentCategory[]
+  TournamentCategory        TournamentCategory[]
+  TournamentTriviaQuestions TournamentTriviaQuestions[]
   @@map("question_category")
 }
 
@@ -501,6 +489,7 @@ model QuestionType {
   points   Int
   question Question[]
 
+  TournamentTriviaQuestions TournamentTriviaQuestions[]
   @@map("question_type")
 }
 
@@ -524,6 +513,13 @@ model UserPoints {
   userId    Int      @map("user_id")
 
   @@map("user_points")
+}
+
+model Test {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  @@map("test")
 }
 
 enum Source {
