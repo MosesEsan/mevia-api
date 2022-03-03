@@ -12,7 +12,7 @@ const Prize = require("../controllers/prize");
 const router = express.Router();
 
 // //INDEX
-// router.get('/', Tournament.index);
+router.get('/', Tournament.index);
 
 //STORE
 router.post('/', [

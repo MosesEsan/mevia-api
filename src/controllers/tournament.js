@@ -5,6 +5,16 @@ const pusher = require("../config/pusher");
 const {slugify} = require("../utils/slugify");
 const UserController = require("../controllers/user");
 
+
+exports.index = async function (req, res) {
+    try {
+        const all_tournaments = await checkTournaments(req.user.id, null, false)
+        return res.status(200).json(all_tournaments)
+    } catch (error) {
+        res.status(500).json(error)
+    }
+};
+
 //CRUD
 // @route POST api/tournament
 // @desc Add a new tournament
@@ -54,72 +64,7 @@ exports.update = async function (req, res) {
 // @access Public
 const check_tournament = async function (req, res) {
     try {
-/*        let today = moment();
-        today = today.format("YYYY-MM-DD");
-        today = moment(today).subtract(7, 'days');
-
-        const tournaments = await prisma.tournament.findMany({
-            where: {
-                // start_date: {lte: new Date(today)},
-                end_date: {gte: new Date(today)},
-            },
-            include: {
-                TournamentPrize: {
-                    include: {
-                        Prize: true,
-                        // Reward: true,
-                        TournamentWinner: true
-                    },
-                },
-                TournamentMode: true,
-                TournamentCategory: true,
-                TournamentUser: {
-                    include: {
-                        User: {
-                            select: {
-                                username: true,
-                                image: true
-                            }
-                        }
-                    },
-                }
-            },
-            orderBy: {created_at: 'asc'}
-        });
-
-        const all_tournaments = []
-        for (let i = 0; i < tournaments.length; i++) {
-            let tournament = tournaments[i];
-
-            if (tournament && tournament.TournamentPrize.length > 0) {
-                let tournament_active = check_tournament_active(tournament)
-
-                tournament = {...tournament, ...tournament_active}
-
-                tournament["users"] = await formatUser(tournament.TournamentUser);
-                let modes = await formatMode(tournament.TournamentMode);
-                if (modes.length > 0) {
-                    tournament["modes"] = modes;
-                    let result = extractWinners(tournament.TournamentPrize);
-                    tournament = {...tournament, ...result}
-
-                    try {
-                        tournament = await checkTournamentRegistration(req.user.id, tournament);
-                        tournament["available_spaces"] = await getAvailableSpaces(tournament.id)
-                        tournament["is_registration_open"] = checkRegistrationOpen(tournament);
-                    } catch (error) {
-                        console.log(error)
-                    }
-
-                    all_tournaments.push(tournament)
-                }
-
-                delete tournament["TournamentUser"]
-                delete tournament["TournamentMode"]
-            }
-        }*/
-
-        const all_tournaments = checkTournaments(req.user.id)
+        const all_tournaments = await checkTournaments(req.user.id)
         return res.status(200).json(all_tournaments)
     } catch (error) {
         res.status(500).json(error)
@@ -128,26 +73,31 @@ const check_tournament = async function (req, res) {
 exports.check_tournament = check_tournament;
 
 
-async function checkTournaments(user_id) {
+async function checkTournaments(user_id, tournament_id = null, inPlayOnly= true) {
     try {
         let today = moment();
         today = today.format("YYYY-MM-DD");
-        today = moment(today).subtract(7, 'days');
+        // today = moment(today).subtract(7, 'days');
+
+        // start_date: {lte: new Date(today)},
+        let whereCond = {}
+        if (inPlayOnly) whereCond['end_date'] = {gte: new Date(today)}
+        if (tournament_id !== null) whereCond["id"] = parseInt(tournament_id)
 
         const tournaments = await prisma.tournament.findMany({
-            where: {
-                // start_date: {lte: new Date(today)},
-                end_date: {gte: new Date(today)},
-            },
+            where: whereCond,
             include: {
-                TournamentPrize: {
+                TournamentReward: {
                     include: {
-                        Prize: true,
-                        // Reward: true,
+                        Reward: true,
                         TournamentWinner: true
                     },
                 },
-                TournamentMode: true,
+                TournamentMode: {
+                    include: {
+                        GameMode: true,
+                    }
+                },
                 TournamentCategory: true,
                 TournamentUser: {
                     include: {
@@ -167,16 +117,18 @@ async function checkTournaments(user_id) {
         for (let i = 0; i < tournaments.length; i++) {
             let tournament = tournaments[i];
 
-            if (tournament && tournament.TournamentPrize.length > 0) {
+            if (tournament && tournament.TournamentReward.length > 0) {
                 let tournament_active = check_tournament_active(tournament)
 
                 tournament = {...tournament, ...tournament_active}
 
                 tournament["users"] = await formatUser(tournament.TournamentUser);
+                tournament["rewards"] = tournament.TournamentReward.map((obj, idx) => obj.Reward)
+
                 let modes = await formatMode(tournament.TournamentMode);
                 if (modes.length > 0) {
                     tournament["modes"] = modes;
-                    let result = extractWinners(tournament.TournamentPrize);
+                    let result = extractWinners(tournament.TournamentReward);
                     tournament = {...tournament, ...result}
 
                     try {
@@ -196,12 +148,12 @@ async function checkTournaments(user_id) {
         }
         return all_tournaments
     } catch (error) {
+        console.log(error)
         throw error
     }
 }
+
 exports.checkTournaments = checkTournaments;
-
-
 
 
 function check_tournament_active(tournament) {
@@ -266,7 +218,7 @@ function check_tournament_active(tournament) {
         //if the end date is before the current date
     } else if (endDate.isBefore(today)) {
         has_ended = true;
-    }else{
+    } else {
         time_left = startDate.valueOf() - today.valueOf();
     }
 
@@ -306,14 +258,18 @@ exports.check_tournament_stats = async function (req, res) {
 
 async function check_tournament_stats(tournament_id, user_id) {
     let tournament = await prisma.tournament.findFirst({
-        where: {id: parseInt(tournament_id)
+        where: {
+            id: parseInt(tournament_id)
 
         },
         include: {
-            TournamentPrize: {
+            TournamentReward: {
                 include: {
-                    Prize: true,
-                    // Reward: true,
+                    Reward: {
+                        include: {
+                            Brand: true
+                        }
+                    },
                     TournamentWinner: {
                         include: {
                             User: {
@@ -326,7 +282,11 @@ async function check_tournament_stats(tournament_id, user_id) {
                     }
                 },
             },
-            TournamentMode: true,
+            TournamentMode: {
+                include: {
+                    GameMode: true
+                }
+            },
             TournamentCategory: true,
             TournamentUser: {
                 include: {
@@ -345,7 +305,7 @@ async function check_tournament_stats(tournament_id, user_id) {
     //Get leaderboard
 
 
-    let {prizes, winners} = extractWinners(tournament.TournamentPrize);
+    let {rewards, winners} = extractWinners(tournament.TournamentReward);
 
     let users = await formatUser(tournament.TournamentUser);
     let modes = await formatMode(tournament.TournamentMode);
@@ -359,7 +319,11 @@ async function check_tournament_stats(tournament_id, user_id) {
         if (best_time.length > 0) leaders.push({...best_time[0], title: "Best Time", type: "time"})
 
         let best_success_rate = await runQuery("success", 1)
-        if (best_success_rate.length > 0) leaders.push({...best_success_rate[0], title: "Best Success Rate", type: "success"})
+        if (best_success_rate.length > 0) leaders.push({
+            ...best_success_rate[0],
+            title: "Best Success Rate",
+            type: "success"
+        })
     } catch (error) {
         console.log(error)
     }
@@ -384,7 +348,7 @@ async function check_tournament_stats(tournament_id, user_id) {
         tournament_active['avail'] = tournament_game_check.new_game_avail;
     }
 
-    return ({...tournament_active, ...available_points, winners, prizes, leaders, users, modes, id: tournament.id})
+    return ({...tournament_active, ...available_points, winners, rewards, leaders, users, modes, id: tournament.id})
 }
 
 exports.register_for_tournament = async function (req, res) {
@@ -475,7 +439,7 @@ exports.tournament_leaderboard = async function (req, res) {
 };
 
 
-async function runQuery(type, tournament_id, limit=10) {
+async function runQuery(type, tournament_id, limit = 10) {
     try {
         let leaderboard = null;
 
@@ -485,7 +449,7 @@ async function runQuery(type, tournament_id, limit=10) {
             "SELECT * FROM(" +
             "SELECT user_id, COUNT(*) AS no_of_games_played " +
             "FROM tournament_game tg " +
-            "WHERE tg.tournament_id = "+tournament_id+" AND tg.submitted_at IS NOT NULL " +
+            "WHERE tg.tournament_id = " + tournament_id + " AND tg.submitted_at IS NOT NULL " +
             "GROUP BY user_id) as e WHERE no_of_games_played > 2) as tu"
 
 
@@ -497,7 +461,7 @@ async function runQuery(type, tournament_id, limit=10) {
             "INNER JOIN question ON gq.questionId = question.id " +
             "INNER JOIN question_type qt ON question.questionTypeId = qt.id " +
             "INNER JOIN user ON tournament_game.user_id = user.id " +
-            "WHERE tournament_game.tournament_id = "+tournament_id+" AND tournament_game.submitted_at IS NOT NULL " +
+            "WHERE tournament_game.tournament_id = " + tournament_id + " AND tournament_game.submitted_at IS NOT NULL " +
             "GROUP BY user_id " +
             "ORDER BY points_obtained desc " +
             "LIMIT 1) as e"
@@ -510,11 +474,11 @@ async function runQuery(type, tournament_id, limit=10) {
             "FROM tournament_question tq " +
             "INNER JOIN tournament_game ON tq.tournamentGameId = tournament_game.id " +
             "INNER JOIN user ON tournament_game.user_id = user.id " +
-            "WHERE tournament_game.tournament_id = "+tournament_id+" AND  tq.correct IS NOT NULL AND tournament_game.user_id " +
+            "WHERE tournament_game.tournament_id = " + tournament_id + " AND  tq.correct IS NOT NULL AND tournament_game.user_id " +
             "NOT IN (SELECT user_id FROM(" + best_points_query + ") as bt) " +
             "GROUP BY user_id " +
             "ORDER BY average_time_per_question asc " +
-            "LIMIT "+limit+"" +
+            "LIMIT " + limit + "" +
             ") as g WHERE g.user_id IN (" + top_users + ")"
 
         // let best_time_user =  await prisma.$queryRawUnsafe(best_time_query)
@@ -579,7 +543,7 @@ async function runQuery(type, tournament_id, limit=10) {
                 "GROUP BY user_id) points_available ON points_available.user_id = user.id " +
                 "WHERE points_available.user_id NOT IN (SELECT user_id FROM(" + best_points_query + ") as bp) " +
                 "ORDER BY success_rate desc" +
-                ") as r LIMIT "+limit+""
+                ") as r LIMIT " + limit + ""
 
             leaderboard = await prisma.$queryRawUnsafe(success_query)
         }
@@ -605,9 +569,9 @@ async function deductPoints(req, res, tournament, tournament_user) {
         await push_update(tournament.id)
 
         //Returns the tournament info
-        await check_tournament(req, res);
+        const all_tournaments = await checkTournaments(req.user.id, tournament.id)
+        return res.status(200).json(all_tournaments);
     } catch (error) {
-        console.log(error)
         await prisma.tournamentUser.delete({where: {id: tournament_user.id}})
         res.status(500).json(error)
     }
@@ -673,16 +637,21 @@ async function getAvailableSpaces(tournament_id) {
 }
 
 
-function extractWinners(prizes) {
+function extractWinners(rewards) {
     try {
-        let all_prizes = [];
+        let all_rewards = [];
         let all_winners = [];
-        prizes.map((obj, idx) => {
+        rewards.map((obj, idx) => {
             let position = obj.position;
-            let prize = obj.Prize; //obj.Reward;
+            let reward = obj.Reward;
+            let brand = obj.Reward.Brand;
             let winners = obj.TournamentWinner;
 
-            all_prizes.push(prize)
+            reward['position'] = position
+            reward['brand'] = brand
+            reward['image'] = brand.image
+
+            all_rewards.push(reward)
 
             winners.map((winner, idx) => winners[idx]["position"] = position)
 
@@ -695,7 +664,7 @@ function extractWinners(prizes) {
             delete all_winners[idx]['User']
         })
 
-        return {winners: all_winners, prizes:all_prizes};
+        return {winners: all_winners, rewards: all_rewards};
 
     } catch (error) {
         console.log(error)
@@ -713,7 +682,7 @@ async function formatMode(modes) {
         let keys = Object.keys(levels)
 
         for (let j = 0; j < modes.length; j++) {
-            let {easy, intermediate, hard, bonus} = modes[j];
+            let {easy, intermediate, hard, bonus} = modes[j]['GameMode'];
 
             let questions = parseInt(easy) + parseInt(intermediate) + parseInt(hard)
 
@@ -823,7 +792,6 @@ async function push_update(tournament_id) {
 }
 
 
-
 // @route GET api/user/{id}/prizes/
 // @desc Returns all the tournament prizes for a specific user
 // @access Public
@@ -834,10 +802,9 @@ exports.user_rewards = async function (req, res) {
                 userId: parseInt(req.user.id)
             },
             include: {
-                TournamentPrize: {
+                TournamentReward: {
                     include: {
-                        Prize: true,
-                        // Reward: true,
+                        Reward: true,
                         Tournament: true,
                         GiftCard: true,
                     },
@@ -855,13 +822,14 @@ exports.user_rewards = async function (req, res) {
 
 function formatRewards(rewards) {
     rewards.forEach((obj, idx) => {
-        let tournament_prize = obj["TournamentPrize"]
 
-        obj["tournament"] = tournament_prize["Tournament"]
+        let tournament_reward = obj["TournamentReward"]
 
-        let prize = tournament_prize["Prize"] // ["Reward"]
-        delete prize["id"]
-        obj["TournamentPrize"] = {...tournament_prize, ...prize}
+        obj["tournament"] = tournament_reward["Tournament"]
+
+        let reward = tournament_reward["Reward"]
+        delete reward["id"]
+        obj["TournamentReward"] = {...tournament_prize, ...reward}
 
         let gift_cards = obj["TournamentPrize"]["GiftCard"]
         obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
