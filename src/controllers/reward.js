@@ -36,7 +36,7 @@ exports.index = async (req, res) => {
 
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', rewards.length)
-        res.status(200).json(rewards)
+        res.status(200).json({rewards, message: {title:"BETA Mode", text:"While in BETA mode, eech reward is limited to one per user and a user can only redeem one reward each week."}})
     } catch (error) {
         console.log(error)
         res.status(500).json(error);
@@ -94,11 +94,30 @@ exports.redeem = async (req, res) => {
     try {
         let can_redeem = false;
 
+
+        //Check if the user has redeemed anything this week (one reward per week)
+        let today = moment();
+        let startOfWeek = today.startOf('week').format('YYYY-MM-DD HH:mm');
+        const redeem = await prisma.redeem.findFirst({
+            where: {
+                userId: parseInt(req.user.id),
+                createdAt: {gte: new Date(startOfWeek)},
+            },
+        })
+        if (redeem) return res.status(401).json({message: `Unfortunately, you can only redeem one reward per week.`});
+
+        //Check if user has previously redeemed this reward
+        const checkReward = await prisma.redeem.findFirst({
+            where: {
+                userId: parseInt(req.user.id),
+                rewardId: parseInt(req.body.reward_id),
+            },
+        })
+        if (checkReward) return res.status(401).json({message: `Unfortunately, all rewards are limited to one per person.`});
+
+
         const user = await UserController.get_user_stats(req.user);
-        const reward = await prisma.reward.findFirst({where: {id: parseInt(req.body.reward_id)},
-            include:{
-                UserType:true
-            }});
+        const reward = await prisma.reward.findFirst({where: {id: parseInt(req.body.reward_id)}, include:{UserType:true}});
         if (!reward) return res.status(401).json({message: `Reward not found`});
 
         //Check the user type
@@ -113,7 +132,7 @@ exports.redeem = async (req, res) => {
         let data = {rewardId:reward.id, userId:user.id}
         await prisma.redeem.create({data})
 
-        res.status(200).json({message: `You have successfully redeemed your reward. \n  You will receive your gift card via email in the next 12h, please make sure to check your spam if not received. 
+        res.status(200).json({message: `You have successfully redeemed your reward. \n  You will receive your gift card via email in the next 12hrs, please make sure to check your spam if not received. 
         You can also can view your reward in your profile under "My Rewards".`});
 
     } catch (error) {
@@ -168,12 +187,12 @@ exports.user_rewards = async function (req, res) {
                 userId: parseInt(req.user.id)
             },
             include: {
-                Reward: true,
-                GiftCard: {
+                Reward: {
                     include: {
                         Brand:true
                     }
                 },
+                GiftCard: true,
             },
         })
 
