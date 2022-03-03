@@ -104,25 +104,16 @@ exports.import = async (req, res) => {
 //Get random questions
 exports.random = async () => {
     try {
+
+        //Select the id of all question that have beenn answered correctly
+        let answered_questions = "SELECT questionId FROM game_question gq WHERE gq.correct is TRUE"
+
         let  questions = await prisma.$queryRaw`
-        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" ORDER BY RAND() LIMIT 4) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" ORDER BY RAND() LIMIT 4) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" ORDER BY RAND() LIMIT 2) `
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.id NOT IN (SELECT questionId FROM game_question gq WHERE gq.correct is TRUE) ORDER BY RAND() LIMIT 4) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.id NOT IN (SELECT questionId FROM game_question gq WHERE gq.correct is TRUE) ORDER BY RAND() LIMIT 4) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.id NOT IN (SELECT questionId FROM game_question gq WHERE gq.correct is TRUE) ORDER BY RAND() LIMIT 2) `
 
-        if (questions.length > 0) {
-            let points_available = 0;
-            let time_available = 0;
-            questions.forEach((question) => {
-                points_available = points_available + question["points"]
-                time_available = time_available + question["time"]
-                question["choices"] = JSON.stringify([question["choice_one"], question["choice_two"], question["choice_three"], question["choice_four"]])
-                question["selected"] = null;
-            });
-
-            shuffle(questions);
-            return {success: true, data: {questions, points_available, time_available}}
-        }
-        else return {success: false, "message": "No Questions Available. Try Again Later"}
+        return reformat(questions);
 
     } catch (error) {
         throw error
@@ -149,10 +140,10 @@ exports.tournament_questions = async (tournament_mode_id= null) => {
         }
 
         let  questions = await prisma.$queryRaw`
-        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.easy}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.intermediate}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.hard}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Bonus" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.bonus}) 
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_questions q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.easy}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_questions q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.intermediate}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_questions q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.hard}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_questions q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Bonus" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.bonus}) 
         `
         return reformat(questions);
     } catch (error) {
@@ -161,36 +152,26 @@ exports.tournament_questions = async (tournament_mode_id= null) => {
 }
 
 function reformat(questions) {
-    console.log("===Questions")
-    console.log(questions)
-    console.log("===Questions")
     if (questions.length > 0) {
         let points_available = 0;
         let time_available = 0;
         questions.forEach((question) => {
             points_available = points_available + question["points"]
             time_available = time_available + question["time"]
-            question["choices"] = JSON.stringify([question["choice_one"], question["choice_two"], question["choice_three"], question["choice_four"]])
+            let choices = [question["choice_one"], question["choice_two"], question["choice_three"], question["choice_four"]];
+            question["choices"] = JSON.stringify(choices)
             question["selected"] = null;
         });
 
-        shuffle(questions);
-        return {success: true, data: {questions, points_available, time_available}}
-    }
-    else return {success: false, "message": "No Questions Available. Try Again Later"}
-}
+        return {success: true, data: {questions:questions, points_available, time_available}}
 
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        let j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
+    } else return {success: false, "message": "No Questions Available. Try Again Later"}
 }
 
 
 async function addToDatabase(row, levels) {
-    const {text, choice1, choice2, choice3, choice4, answer, level, time, exported} = row;
-    let questionTypeId = levels[level.toLowerCase()]
+    const {text, choice1, choice2, choice3, choice4, answer, time, questionTypeId} = row;
+    // let questionTypeId = levels[level.toLowerCase()]
 
     const new_question = {
         text,
