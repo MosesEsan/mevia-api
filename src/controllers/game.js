@@ -222,6 +222,7 @@ exports.user_games = async function (req, res) {
                     submittedAt: null
                 },
             },
+            orderBy: {submittedAt: 'desc'},
             include:{
                 WeeklyChallenge:true
             }
