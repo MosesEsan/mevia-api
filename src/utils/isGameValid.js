@@ -26,13 +26,13 @@ async function isGameValid(game) {
 
 function get_next_game(game) {
     let next_game = new moment(game.nextGameAt);
-    // next_game = next_game.format("HH:mm:ss");
-    // next_game = moment(next_game, format)
+    let gameStartTime = next_game.format("HH:mm:ss");
+    gameStartTime = moment(gameStartTime, format)
 
     let check = moment()
     let message = `Next Game Starts At ${next_game}`
     let time_left = next_game.valueOf() - check.valueOf();
-    return {time_left, message}
+    return {time_left, message, game_start_time: gameStartTime}
 }
 
 function checkNextGame(game) {
