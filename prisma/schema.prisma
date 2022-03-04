@@ -235,7 +235,7 @@ model TournamentTriviaQuestions {
   GameQuestion       GameQuestion[]
   TournamentQuestion TournamentQuestion[]
 
-  @@map("tournament_trivia_questions")
+  @@map("tournament_trivia_question")
 }
 
 model TournamentQuestion {
@@ -510,9 +510,9 @@ model UserPoints {
   source    Source   @default(REGISTRATION)
   points    Int
 
-  @@map("user_points")
   User   User @relation(fields: [userId], references: [id])
   userId Int
+  @@map("user_points")
 }
 
 model Test {

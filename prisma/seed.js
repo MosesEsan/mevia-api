@@ -75,15 +75,6 @@ async function main() {
         },
     })
 
-    // REWARD TYPE
-    await prisma.rewardType.upsert({
-        where: {name: 'Gift Card'},
-        update: {},
-        create: {
-            name: 'Gift Card'
-        },
-    })
-
     // QUESTION CATEGORY
     await prisma.questionCategory.upsert({
         where: {name: 'General'},
