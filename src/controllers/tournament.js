@@ -829,7 +829,7 @@ function formatRewards(rewards) {
 
         let reward = tournament_reward["Reward"]
         delete reward["id"]
-        obj["TournamentReward"] = {...tournament_prize, ...reward}
+        obj["TournamentReward"] = {...tournament_reward, ...reward}
 
         let gift_cards = obj["TournamentPrize"]["GiftCard"]
         obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
