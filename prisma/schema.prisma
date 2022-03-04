@@ -151,7 +151,7 @@ model TournamentCategory {
 
 model GameMode {
   id    Int    @id @default(autoincrement())
-  name     String     @unique
+  name  String @unique
   lives Int
 
   easy         Int
@@ -509,10 +509,10 @@ model UserPoints {
   createdAt DateTime @default(now())
   source    Source   @default(REGISTRATION)
   points    Int
-  User      User     @relation(fields: [userId], references: [id])
-  userId    Int      @map("user_id")
 
   @@map("user_points")
+  User   User @relation(fields: [userId], references: [id])
+  userId Int
 }
 
 model Test {
