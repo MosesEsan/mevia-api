@@ -3,6 +3,7 @@ const prisma = require('../config/prisma')
 
 const QuestionController = require('../controllers/question');
 const ChallengeController = require('../controllers/challenge');
+const {shuffle} = require("../utils/slugify");
 
 const format = 'HH:mm:ss'
 
@@ -153,7 +154,8 @@ const read = async function (req, res, game, message) {
         let {points} = questionType;
 
         let formatted_question = {game_question_id, id, text, time, answer, points, selected: null}
-        formatted_question["choices"] = JSON.stringify([choice_one, choice_two, choice_three,choice_four])
+        let choices = [choice_one, choice_two, choice_three, choice_four]
+        formatted_question["choices"] = JSON.stringify(shuffle(choices))
 
         game_questions_formatted.push(formatted_question)
         index++;
@@ -166,7 +168,7 @@ const read = async function (req, res, game, message) {
     });
 
     game['weekly_challenge'] = weekly_challenge;
-    game['questions'] = game_questions_formatted;
+    game['questions'] = shuffle(game_questions_formatted);
     game['prizes'] = prizes;
 
     res.status(200).json({success: true, game, message})
