@@ -148,7 +148,6 @@ async function checkTournaments(user_id, tournament_id = null, inPlayOnly= true)
         }
         return all_tournaments
     } catch (error) {
-        console.log(error)
         throw error
     }
 }
@@ -303,8 +302,6 @@ async function check_tournament_stats(tournament_id, user_id) {
     });
 
     //Get leaderboard
-
-
     let {rewards, winners} = extractWinners(tournament.TournamentReward);
 
     let users = await formatUser(tournament.TournamentUser);
@@ -581,7 +578,7 @@ async function deductPoints(req, res, tournament, tournament_user) {
 async function get_available_points(tournament_id) {
     try {
         const today = moment();
-        today.format('YYYY-MM-DD HH:mm');
+        let start = today.startOf('day').format('YYYY-MM-DD HH:mm');
 
         const tournament = await prisma.tournament.findFirst({where: {id: parseInt(tournament_id)}});
 
@@ -589,12 +586,13 @@ async function get_available_points(tournament_id) {
             where: {
                 tournamentId: parseInt(tournament_id),
                 submittedAt: null,
-                initiatedAt: {gt: new Date(today)},
+                initiatedAt: {gte: new Date(start)},
             },
             _sum: {
                 pointsAvailable: true,
             }
         });
+
 
         const pointsWon = await prisma.tournamentGame.aggregate({
             where: {
@@ -602,7 +600,7 @@ async function get_available_points(tournament_id) {
                 NOT: {
                     submittedAt: null
                 },
-                initiatedAt: {gt: new Date(today)},
+                initiatedAt: {gte: new Date(start)},
             },
             _sum: {
                 pointsObtained: true,
@@ -642,14 +640,13 @@ function extractWinners(rewards) {
         let all_rewards = [];
         let all_winners = [];
         rewards.map((obj, idx) => {
+
             let position = obj.position;
             let reward = obj.Reward;
-            let brand = obj.Reward.Brand;
             let winners = obj.TournamentWinner;
 
             reward['position'] = position
-            reward['brand'] = brand
-            reward['image'] = brand.image
+            reward['image'] = obj.Reward.Brand.image
 
             all_rewards.push(reward)
 
@@ -831,11 +828,11 @@ function formatRewards(rewards) {
         delete reward["id"]
         obj["TournamentReward"] = {...tournament_reward, ...reward}
 
-        let gift_cards = obj["TournamentPrize"]["GiftCard"]
-        obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
+        // let gift_cards = obj["TournamentPrize"]["GiftCard"]
+        // obj["gift_card"] = gift_cards.length > 0 ? gift_cards[0] : null
 
-        delete obj["TournamentPrize"]["GiftCard"]
-        delete obj["TournamentPrize"]["Prize"] //["Reward"]
+        // delete obj["TournamentPrize"]["GiftCard"]
+        delete obj["TournamentReward"]["Reward"] //["Reward"]
     });
 
     return rewards;

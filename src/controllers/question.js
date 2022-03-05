@@ -123,8 +123,12 @@ exports.random = async () => {
 //Get tournament questions
 exports.tournament_questions = async (tournament_mode_id= null) => {
     try {
-        const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)}})
+        const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)}, include: {
+                GameMode: true,
+            }})
         if (!mode) return {success: false, "message": "Mode does not exist!!"}
+
+        let {easy, intermediate, hard, bonus} = mode['GameMode'];
 
         const categories = await prisma.tournamentCategory.findMany({
             where: {tournamentId: mode.tournamentId},
@@ -140,11 +144,12 @@ exports.tournament_questions = async (tournament_mode_id= null) => {
         }
 
         let  questions = await prisma.$queryRaw`
-        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.easy}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.intermediate}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.hard}) 
-        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Bonus" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${mode.bonus}) 
+        (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Easy" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${easy}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Intermediate" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${intermediate}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Hard" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${hard}) 
+        UNION (SELECT q.id, qt.name as difficulty, qt.points, text, choice_one, choice_two, choice_three, choice_four, answer, time from tournament_trivia_question q inner join question_type qt on q.questionTypeId = qt.id where qt.name = "Bonus" AND q.categoryId IN (${all_categories.toString()}) ORDER BY RAND() LIMIT ${bonus}) 
         `
+        
         return reformat(questions);
     } catch (error) {
         return {success: false, "message": error.message}

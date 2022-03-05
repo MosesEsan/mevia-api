@@ -56,7 +56,10 @@ exports.create = async function (req, res) {
     if (!user_check) return res.status(401).json({error: {message: "You are not registered for this tournament."}});
 
     //check the mode exists
-    const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)}})
+    const mode = await prisma.tournamentMode.findFirst({where: {id: parseInt(tournament_mode_id)},
+        include: {
+            GameMode: true,
+        }})
     if (!mode) return res.status(401).json({success: false, "message": "Mode does not exist!!"})
 
     //check the points required for this mode
@@ -92,7 +95,7 @@ async function checkModePoints(mode) {
         questionTypes.forEach((obj) => levels[obj.name] = obj.points);
 
         let keys = Object.keys(levels)
-        let {easy, intermediate, hard, bonus} = mode;
+        let {easy, intermediate, hard, bonus} = mode['GameMode'];
 
         let points = 0;
         if (keys.includes("easy")) points = points + (parseInt(easy) * levels["easy"])
@@ -147,12 +150,19 @@ const read = async function (req, res, game) {
             id: true,
             TournamentGame: {
                 include: {
-                    TournamentMode: true,
+                    TournamentMode: {
+                        include: {
+                            GameMode: true
+                        },
+                    },
                     Tournament: {
                         include: {
-                            TournamentPrize: {
+                            TournamentReward: {
                                 include: {
-                                    Prize: {
+                                    Reward: {
+                                        include: {
+                                            Brand: true
+                                        }
                                     }
                                 },
                             }
@@ -179,7 +189,7 @@ const read = async function (req, res, game) {
         //extract the prizes from the first record -
         if (index === 0) {
             tournament = game_question.TournamentGame.Tournament;
-            all_prizes = game_question.TournamentGame.Tournament.TournamentPrize;
+            all_prizes = game_question.TournamentGame.Tournament.TournamentReward;
             tournament_mode = game_question.TournamentGame.TournamentMode;
         }
 
@@ -195,11 +205,18 @@ const read = async function (req, res, game) {
         index++;
     });
 
-    all_prizes.forEach((prize) => {
-        let the_prize = prize.Prize;
-        the_prize['position'] = prize.position;
-        prizes.push(the_prize)
-    });
+
+    all_prizes.map((obj, idx) => {
+        let position = obj.position;
+        let reward = obj.Reward;
+        let brand = obj.Reward.Brand;
+
+        reward['position'] = position
+        reward['brand'] = brand
+        reward['image'] = brand.image
+
+        prizes.push(reward)
+    })
 
     game['tournament'] = tournament;
     game['questions'] = shuffle(game_questions_formatted);
