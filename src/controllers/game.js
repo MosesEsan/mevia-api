@@ -7,9 +7,11 @@ const {shuffle} = require("../utils/slugify");
 
 const format = 'HH:mm:ss'
 
+const WAIT_TIME = 60 //30;
+
 function getNextGameTime(challengeEndTime) {
     //calculate the time for the next game
-    let timePlusThirty = moment().add(30, 'minutes')
+    let timePlusThirty = moment().add(WAIT_TIME, 'minutes')
     timePlusThirty = moment(timePlusThirty, format)
 
     let nextGame = null;
@@ -63,7 +65,6 @@ exports.create = async function (req, res) {
         else if (result.next_game !== null) {
             res.status(200).json(result)
         }
-
         else {
             res.status(200).json(result)
         }
