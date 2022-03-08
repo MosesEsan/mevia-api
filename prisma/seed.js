@@ -7,7 +7,7 @@ async function main() {
         update: {},
         create: {
             name: 'easy',
-            points: 250
+            points: 125
         },
     })
     const intermediate = await prisma.questionType.upsert({
@@ -15,7 +15,7 @@ async function main() {
         update: {},
         create: {
             name: 'intermediate',
-            points: 500
+            points: 250
         },
     })
     const hard = await prisma.questionType.upsert({
@@ -26,6 +26,7 @@ async function main() {
             points: 750
         },
     })
+
     const bonus = await prisma.questionType.upsert({
         where: {name: 'bonus'},
         update: {},
