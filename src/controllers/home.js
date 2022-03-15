@@ -94,7 +94,7 @@ exports.index = async function (req, res) {
                 "Earn points by playing the daily challenges at 9am, 1pm and 6pm.",
                 "Each challenge stays active for 3 hours.",
                 "Play as many games as you want until time runs out.",
-                "There's a 30 minutes time out for each user after each game."
+                "There's a one hour time out for each user after each game."
             ]
         }
 
