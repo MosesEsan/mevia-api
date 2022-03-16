@@ -124,12 +124,24 @@ exports.resendToken = async (req, res) => {
 // @access Private
 async function sendVerificationCode(user, req, res) {
     try {
-        let verificationRequest = await twilio.verify.services(VERIFICATION_SID)
-            .verifications
-            .create({to: user.formattedPhoneNumber, channel: 'sms'})
-        logger.debug(verificationRequest);
 
-        res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
+
+        let isTestAccount = (user.formattedPhoneNumber === "+353834800091")
+
+
+        if (isTestAccount){
+            res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
+
+        }else{
+
+            let verificationRequest = await twilio.verify.services(VERIFICATION_SID)
+                .verifications
+                .create({to: user.formattedPhoneNumber, channel: 'sms'})
+            logger.debug(verificationRequest);
+
+            res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
+        }
+
     } catch (error) {
         logger.error(error);
         res.status(500).json(error)
