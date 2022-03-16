@@ -9,23 +9,9 @@ const prisma = require("../config/prisma");
 exports.index = async function (req, res) {
     try {
         let type = (req.body.type) ? req.body.type : "week";
+        let data = await getLeaderboard(10, type);
 
-        let leaderboard = await runQuery(type)
-
-        // if (leaderboard.length === 0 && type === "week"){
-        //     type = "month"
-        //     leaderboard = await runQuery("month")
-        // }
-
-        let top_leaders = []
-        leaderboard.map((user, idx) => {
-            user['id'] = idx + 1;
-            if (idx < 3) top_leaders.push(user)
-        })
-
-        let data = {leaderboard, top_leaders, title: `Top leaders of the ${type}`, message: `The current reigning champions of the ${type}`}
-
-        res.status(200).json({success: true, data});
+        res.status(200).json(data);
     } catch (error) {
         logger.error(error);
         res.status(500).json(error)
@@ -33,7 +19,54 @@ exports.index = async function (req, res) {
 };
 
 
-async function runQuery(type) {
+async function getLeaderboard(limit, type=null) {
+
+    let leaderboard = []
+    let selected_type = null
+    let title = ""
+
+
+    if (type){
+        leaderboard = await runQuery(type, limit)
+    }else{
+        let types = ["today", "week", "month"]
+        let titles = ["Today's", "This Week", "This Month"]
+
+        for (let i = 0; i < types.length; i++) {
+            if (leaderboard.length === 0){
+                let type = types[i]
+                selected_type = type
+                title = titles[i]
+                let response = await runQuery(type, limit)
+
+
+                console.log("Type", selected_type)
+                console.log("response", response)
+
+                if (response.length > 0) {
+                    leaderboard = response;
+                    break;
+                }
+            }
+        }
+    }
+
+    let top_leaders = []
+    leaderboard.map((user, idx) => {
+        user['id'] = idx + 1;
+        if (idx < 3) top_leaders.push(user)
+    })
+
+    return {
+        leaderboard,
+        top_leaders,
+        title: `${title} Leaders`,
+        // message: `The current reigning champions of the ${selected_type}`
+    };
+}
+
+
+async function runQuery(type, limit=10) {
     try {
         const today = moment()
         let startOfWeek = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm');
@@ -90,7 +123,7 @@ async function runQuery(type) {
             AND game.initiatedAt BETWEEN ${new Date(start)} AND ${new Date(end)}
             GROUP BY userId) points_available ON points_available.userId = user.id
             ORDER BY points desc, no_of_games_played desc
-        ) as f , (SELECT @rank := 0) m LIMIT 10`;
+        ) as f , (SELECT @rank := 0) m LIMIT ${limit}`;
 
         return leaderboard;
 
@@ -100,3 +133,4 @@ async function runQuery(type) {
 }
 
 exports.runQuery = runQuery;
+exports.getLeaderboard = getLeaderboard;

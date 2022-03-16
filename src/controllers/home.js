@@ -53,22 +53,8 @@ exports.index = async function (req, res) {
         //Leaderboard - WinnersCard
         let leaderboard = null;
         let leaderboard_error = null;
-        let leaderboard_title = null;
         try {
-            let type = "week";
-
-            leaderboard = await LeaderBoardController.runQuery(type)
-
-            if (leaderboard.length === 0){
-                type = "month"
-                leaderboard = await LeaderBoardController.runQuery("month")
-            }
-
-            leaderboard.map((user, idx) => {
-                user['id'] = idx + 1;
-            })
-
-            leaderboard_title = `Top leaders of the ${type}`
+            leaderboard = await LeaderBoardController.getLeaderboard(3, null)
         } catch (error) {
             leaderboard_error = error
         }
@@ -111,9 +97,9 @@ exports.index = async function (req, res) {
         let data = {
             user, user_error,
             challenge, challenge_error,
-            leaderboard, leaderboard_error, leaderboard_title,
-            prizes, prizes_error,
+            leaderboard, leaderboard_error,
             tournaments, tournaments_error,
+            prizes, prizes_error,
             panels
         }
 
