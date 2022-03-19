@@ -4,6 +4,7 @@ const logger = require('../../logger')();
 const {generateJWT} = require('../utils/generateToken');
 const {twilio, VERIFICATION_SID} = require('../config/twilio');
 
+const test_numbers = ["+353834800091", "+353834800092", "+353834800093", "+353834800094", "+353834800095", "+353862709768"];
 const UserController = require('../controllers/user');
 // @route POST api/auth/register
 // @desc Register user and sends a verification code
@@ -58,8 +59,7 @@ exports.verify = async (req, res) => {
     let errMessage = "Incorrect verification code. Please try again later."
 
     try {
-
-        let isTestAccount = (formattedPhoneNumber === "+353834800091" && verificationCode === 123456)
+        let isTestAccount = (test_numbers.includes(formattedPhoneNumber) && verificationCode === 123456)
 
         if (!isTestAccount){
             verificationResult = await twilio.verify.services(VERIFICATION_SID)
@@ -124,14 +124,10 @@ exports.resendToken = async (req, res) => {
 // @access Private
 async function sendVerificationCode(user, req, res) {
     try {
-
-
-        let isTestAccount = (user.formattedPhoneNumber === "+353834800091")
-
+        let isTestAccount = test_numbers.includes(user.formattedPhoneNumber)
 
         if (isTestAccount){
             res.status(200).json({message: 'A verification code has been sent to ' + user.formattedPhoneNumber + '.'});
-
         }else{
 
             let verificationRequest = await twilio.verify.services(VERIFICATION_SID)
