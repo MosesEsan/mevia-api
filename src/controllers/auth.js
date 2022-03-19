@@ -48,7 +48,6 @@ exports.login = async (req, res) => {
     }
 };
 
-
 // @route GET api/verify/:token
 // @desc Verify code passed
 // @access Public
