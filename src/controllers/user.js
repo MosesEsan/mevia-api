@@ -1,4 +1,8 @@
+const fs = require('fs');
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
+
 const prisma = require('../config/prisma')
+const { s3Client, AWS_BUCKET_NAME, REGION} = require("../config/aws");
 
 const logger = require('../../logger')();
 
@@ -122,10 +126,6 @@ const get_user_stats = async (user) => {
         redeems_points.map((redeem, idx) => {
             total_redeems_points = total_redeems_points+redeem.Reward.points
         })
-
-        console.log(redeems_points)
-        console.log(total_redeems_points)
-
 
         let current = null
         let next = null
@@ -369,12 +369,37 @@ exports.profile_image = async function (req, res) {
 
         const id = req.params.id;
 
-        const user = await prisma.user.update({where: {id: parseInt(id)}, data: {image: req.file.path}})
+        //Attempt to upload
+        const url = await upload_image(req);
+
+        const user = await prisma.user.update({where: {id: parseInt(id)}, data: {image: url}})
 
         res.status(200).json(user);
     } catch (e) {
         logger.error(e);
         res.status(500).json({success: false, message: e.message})
+    }
+};
+
+
+const upload_image = async function (req) {
+    // Read content from the file
+    const fileStream = fs.createReadStream(req.file.path);
+
+// Set the parameters
+    const params = {
+        Bucket: AWS_BUCKET_NAME, // The name of the bucket. For example, 'sample_bucket_101'.
+        Key: `users/${req.file.filename}`,
+        Body: fileStream,
+        ACL: "public-read", // enable public access for this object
+    };
+
+    // Create an object and upload it to the Amazon S3 bucket.
+    try {
+        await s3Client.send(new PutObjectCommand(params));
+        return `https://${params.Bucket}.s3.${REGION}.amazonaws.com/${params.Key}`; // For unit tests.
+    } catch (err) {
+        console.log("Error", err);
     }
 };
 
