@@ -11,35 +11,52 @@ const logger = require('../../logger')();
 // @access Public
 exports.index = async (req, res) => {
     try {
-        let rewards = await prisma.brand.findMany({
-            // orderBy: {points: "asc"},
+        let rewards = await prisma.rewardType.findMany({
             include: {
-                Reward: {
+                reward: {
                     orderBy: {points: "asc"},
                     include: {
-                        UserType: true
-                    }
-                }
-            }
-        })
-        let rewardss = await prisma.rewardType.findMany({
-            // orderBy: {points: "asc"},
-            include: {
-                Reward: {
-                    orderBy: {points: "asc"},
-                    include: {
-                        UserType: true,
-                        Brand: true,
+                        user_type: true,
+                        brand: true,
                     }
                 }
             }
         })
 
-        console.log(rewardss)
+        let formatted = []
+        rewards.map((obj, idx) => {
+            let reward = obj.reward;
+            let name = obj.name;
+            let data = {}
+            let brands = []
+            let all_brands = []
+            reward.map((rewa, index) => {
+                let brands = rewa.brand;
+                const {clone, ...brand} = rewa;
+                let brandName = brands.name;
+                let keys = Object.keys(data);
+                if (!keys.includes(brandName)){
+                    data[brandName] = []
+                }
+            })
+
+            reward.map((item, index) => {
+                let name = item.brand.name;
+                let arr = data[name]
+                arr.push(item)
+            })
+
+            Object.keys(data).map((key, index) => {
+                let this_brand = {name:key, rewards:data[key]}
+                all_brands.push(this_brand)
+            })
+
+            obj['brands'] = all_brands
+        })
 
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', rewards.length)
-        res.status(200).json({rewards, rewardss,
+        res.status(200).json({rewards,
             message: {
                 title: "BETA Mode",
                 text: "While in BETA mode, eech reward is limited to one per user and a user can only redeem one reward each week."
