@@ -13,11 +13,11 @@ exports.index = async (req, res) => {
     try {
         let rewards = await prisma.rewardType.findMany({
             include: {
-                reward: {
+                Reward: {
                     orderBy: {points: "asc"},
                     include: {
-                        user_type: true,
-                        brand: true,
+                        UserType: true,
+                        Brand: true,
                     }
                 }
             }
