@@ -359,15 +359,15 @@ const get_user_rank = async function (user) {
     }
 }
 
-
-// @route GET api/user/{id}
-// @desc Returns a specific user
-// @access Public
 exports.profile_image = async function (req, res) {
     try {
         if (!req.file) return res.status(400).json({error: {message: 'No files were uploaded.'}});
 
+        let user_id = req.user.id;
         const id = req.params.id;
+
+        //Make sure the passed id is that of the logged in user
+        if (user_id.toString() !== id.toString()) return res.status(401).json({error: {message: "Sorry, you don't have the permission to update this data."}});
 
         //Attempt to upload
         const url = await upload_image(req);
@@ -375,6 +375,24 @@ exports.profile_image = async function (req, res) {
         const user = await prisma.user.update({where: {id: parseInt(id)}, data: {image: url}})
 
         res.status(200).json(user);
+    } catch (e) {
+        logger.error(e);
+        res.status(500).json({success: false, message: e.message})
+    }
+};
+
+
+exports.shipping_info = async function (req, res) {
+    try {
+        let user_id = req.user.id;
+        const data = req.body;
+        const id = req.params.id;
+
+        //Make sure the passed id is that of the logged in user
+        if (user_id.toString() !== id.toString()) return res.status(401).json({error: {message: "Sorry, you don't have the permission to update this data."}});
+
+        const shippingInfo = await prisma.shippingInfo.update({where: {userId: parseInt(id)}, data})
+        res.status(200).json(shippingInfo);
     } catch (e) {
         logger.error(e);
         res.status(500).json({success: false, message: e.message})

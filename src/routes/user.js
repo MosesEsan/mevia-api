@@ -50,5 +50,7 @@ router.put('/:id', User.update);
 
 router.put('/:id/upload', upload.single("image"), User.profile_image)
 
+router.put('/:id/shipping', User.shipping_info)
+
 
 module.exports = router;
