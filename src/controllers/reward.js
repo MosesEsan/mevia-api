@@ -18,6 +18,7 @@ exports.index = async (req, res) => {
                     include: {
                         UserType: true,
                         Brand: true,
+                        RewardType: true
                     }
                 }
             }
@@ -25,43 +26,48 @@ exports.index = async (req, res) => {
 
         let formatted = []
         rewards.map((obj, idx) => {
-            let reward = obj.reward;
+            let reward = obj.Reward;
             let name = obj.name;
             let data = {}
+            let images = {}
+            let websites = {}
             let brands = []
             let all_brands = []
-            reward.map((rewa, index) => {
-                let brands = rewa.brand;
-                const {clone, ...brand} = rewa;
-                let brandName = brands.name;
+
+            reward.map((item, index) => {
+                let brandName = item.Brand.name;
+                let brandImage = item.Brand.image;
+                let brandWebsite = item.Brand.website;
                 let keys = Object.keys(data);
                 if (!keys.includes(brandName)){
                     data[brandName] = []
+                    images[brandName] = brandImage
+                    websites[brandName] = brandWebsite
                 }
             })
 
             reward.map((item, index) => {
-                let name = item.brand.name;
+                let name = item.Brand.name;
                 let arr = data[name]
                 arr.push(item)
             })
 
             Object.keys(data).map((key, index) => {
-                let this_brand = {name:key, rewards:data[key]}
+                let this_brand = {name:key, image:images[key],  website:websites[key], rewards:data[key]}
                 all_brands.push(this_brand)
             })
 
             obj['brands'] = all_brands
+            formatted.push()
         })
+
+        console.log("Return")
+        console.log(rewards[1]["brands"][0]["rewards"])
+        console.log("Return")
 
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', rewards.length)
-        res.status(200).json({rewards,
-            message: {
-                title: "BETA Mode",
-                text: "While in BETA mode, eech reward is limited to one per user and a user can only redeem one reward each week."
-            }
-        })
+        res.status(200).json(rewards)
     } catch (error) {
         console.log(error)
         res.status(500).json(error);
