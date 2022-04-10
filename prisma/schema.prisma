@@ -36,6 +36,22 @@ model User {
   TournamentReward TournamentReward[]
   DailyReward      DailyReward[]
   Redeem           Redeem[]
+  ShippingInfo     ShippingInfo[]
+}
+
+model ShippingInfo {
+  id     Int  @id @default(autoincrement())
+  User   User @relation(fields: [userId], references: [id])
+  userId Int  @unique @map("user_id")
+
+  fullName       String? @map("full_name")
+  addressLineOne String  @map("address_line_one")
+  addressLineTwo String? @map("address_line_two")
+  county         String
+  eircode        String?
+
+  createdAt DateTime @default(now())
+  @@map("shipping_info")
 }
 
 model Question {
@@ -319,7 +335,12 @@ model Brand {
 model RewardType {
   id Int @id @default(autoincrement())
 
-  name String
+  name     String
+  subtitle String?
+  message  String?
+
+  emailRequired   Boolean? @default(false)
+  addressRequired Boolean? @default(false)
 
   Reward Reward[]
   @@map("reward_type")
@@ -333,6 +354,7 @@ model Reward {
 
   name        String
   description String?
+  image       String?
   terms       String?
   points      Int
 
