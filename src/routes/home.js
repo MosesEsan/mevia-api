@@ -6,6 +6,7 @@ const {check} = require("express-validator");
 const router = express.Router();
 
 router.get('/', [], Home.index);
+router.get('/rules', [], Home.rules);
 
 
 module.exports = router;

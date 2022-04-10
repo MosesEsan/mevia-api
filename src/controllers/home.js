@@ -33,7 +33,7 @@ exports.index = async function (req, res) {
         try {
             const weekly_challenge = await ChallengeController.checkWeeklyChallenge();
             // if (weekly_challenge && weekly_challenge.WeeklyPrize.length > 0){
-                challenge = await ChallengeController.checkChallenges(user_id, weekly_challenge);
+            challenge = await ChallengeController.checkChallenges(user_id, weekly_challenge);
             // }else{
             //     challenge_error = {error: {message: "No Challenges available."}}
             // }
@@ -65,8 +65,8 @@ exports.index = async function (req, res) {
         try {
             prizes = await prisma.prize.findMany({
                 orderBy: {points: "asc"},
-                include:{
-                    UserType:true
+                include: {
+                    UserType: true
                 }
             })
         } catch (error) {
@@ -76,7 +76,7 @@ exports.index = async function (req, res) {
         //FAQ -
         let rules = {
             title: "How to play",
-            data:[
+            data: [
                 "Earn points by playing the daily challenges at 9am, 1pm and 6pm.",
                 "Each challenge stays active for 3 hours.",
                 "Play as many games as you want until time runs out.",
@@ -86,7 +86,7 @@ exports.index = async function (req, res) {
 
         let redeem = {
             title: "Redeeming your points",
-            data:[
+            data: [
                 "Redeem your points for exciting prizes.",
                 "Rewards are user level specific.",
                 "Play more games to level up and unlock new rewards."
@@ -109,6 +109,18 @@ exports.index = async function (req, res) {
         res.status(500).json(error)
     }
 
+};
+
+
+exports.rules = async function (req, res) {
+    const data = [
+        "Earn points by playing the daily challenges at 9am, 1pm and 6pm.",
+        "Each challenge stays active for 3 hours.",
+        "Play as many games as you want until time runs out.",
+        "There's a one hour time out for each user after each game."
+    ]
+
+    res.status(200).json(data);
 };
 
 
