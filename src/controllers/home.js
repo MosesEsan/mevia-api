@@ -20,9 +20,7 @@ exports.index = async function (req, res) {
         let user = null;
         let user_error = null;
         try {
-            user = await prisma.user.findUnique({where: {id: parseInt(user_id)}})
-            user = await UserController.get_user_stats(user)
-            user = await UserController.get_user_rank(user)
+            user = await UserController.get_user(parseInt(user_id));
         } catch (error) {
             user_error = error
         }

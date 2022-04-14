@@ -1,8 +1,8 @@
 const fs = require('fs');
-const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const {PutObjectCommand} = require("@aws-sdk/client-s3");
 
 const prisma = require('../config/prisma')
-const { s3Client, AWS_BUCKET_NAME, REGION} = require("../config/aws");
+const {s3Client, AWS_BUCKET_NAME, REGION} = require("../config/aws");
 
 const logger = require('../../logger')();
 
@@ -24,18 +24,42 @@ exports.index = async (req, res) => {
 // // @desc Returns a specific user
 // // @access Public
 exports.read = async function (req, res) {
-    const id = req.params.id;
     try {
-        let user = await prisma.user.findUnique({where: {id: parseInt(id)}})
-        user = await get_user_stats(user)
-        user = await get_user_rank(user)
-        res.status(200).json(user);
-
+        user = await get_user(parseInt(req.params.id));
     } catch (error) {
-        logger.error(e);
+        logger.error(error);
         res.status(500).json(error)
     }
 };
+
+
+const get_user = async (id) => {
+    try {
+        let user = await prisma.user.findUnique({
+            where: {id: parseInt(id)},
+            include: {
+                ShippingInfo: true,
+            }
+        })
+
+        if (!user) return res.status(401).json({message: 'User does not exist'});
+
+        const shippingInfo = user.ShippingInfo || []
+
+        if (shippingInfo.length > 0) {
+            const {id, ...clone} = shippingInfo[0];
+            user = {...user, ...clone};
+        }
+
+        delete user['ShippingInfo']
+
+        user = await get_user_stats(user)
+        user = await get_user_rank(user)
+        return user;
+    } catch (error) {
+        throw error;
+    }
+}
 
 // @route PUT api/user/{id}
 // @desc Update user details
@@ -124,7 +148,7 @@ const get_user_stats = async (user) => {
         });
         let total_redeems_points = 0;
         redeems_points.map((redeem, idx) => {
-            total_redeems_points = total_redeems_points+redeem.Reward.points
+            total_redeems_points = total_redeems_points + redeem.Reward.points
         })
 
         let current = null
@@ -302,50 +326,52 @@ const get_user_games_stats = async (user) => {
 const get_user_rank = async function (user) {
     try {
         const userRank = await prisma.$queryRaw`
-            SELECT * FROM (
-        SELECT @rank := @rank + 1 rank, user_id, username, image, points_obtained, points_available, no_of_games_played, correct_answers, wrong_answers, ceil(average) as average , (points_obtained/points_available) * 100 as success_rate
-        FROM
-        (
-            SELECT user.id as user_id, user.username, user.image, COALESCE(points_obtained, 0) AS points_obtained, COALESCE(points_available, 0) AS points_available, 
-            COALESCE(no_of_games_played, 0) AS no_of_games_played,
-            COALESCE(correct_answers, 0) AS correct_answers,
-            COALESCE(wrong_answers, 0) AS wrong_answers,
-            (points_obtained/no_of_games_played) as average
-            FROM user
-            INNER JOIN 
-            (SELECT game.userId as user_id, user.username, user.image, SUM((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
-            FROM game_question gq
-            INNER JOIN game  ON gq.gameId = game.id 
-            INNER JOIN question ON gq.questionId = question.id 
-            INNER JOIN question_type qt ON question.questionTypeId = qt.id
-            INNER JOIN user ON game.userId = user.id
-            WHERE game.submittedAt IS NOT NULL
-            GROUP BY user_id
-            ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id 
-            LEFT JOIN (
-            SELECT userId, COUNT(*) AS no_of_games_played
-            FROM game
-            WHERE game.submittedAt IS NOT NULL
-            GROUP BY userId) no_of_games_played ON no_of_games_played.userId = user.id
-            LEFT JOIN (
-            SELECT userId, COUNT(*) AS correct_answers
-            FROM game_question gq
-            INNER JOIN game  ON gq.gameId = game.id 
-            WHERE game.submittedAt IS NOT NULL AND gq.correct is True
-            GROUP BY userId) correct_answers ON correct_answers.userId = user.id
-            LEFT JOIN (
-            SELECT userId, COUNT(*) AS wrong_answers
-            FROM game_question gq
-            INNER JOIN game  ON gq.gameId = game.id 
-            WHERE game.submittedAt IS NOT NULL AND gq.correct is False
-            GROUP BY userId) wrong_answers ON wrong_answers.userId = user.id
-            LEFT JOIN (
-            SELECT userId, SUM(game.pointsAvailable) as points_available
-            FROM game
-            WHERE game.submittedAt IS NOT NULL
-            GROUP BY userId) points_available ON points_available.userId = user.id
-            ORDER BY points_obtained desc, no_of_games_played desc
-        ) as f , (SELECT @rank := 0) m ) as h WHERE h.user_id = ${user.id}`;
+            SELECT *
+            FROM (
+                     SELECT @rank := @rank + 1 rank, user_id, username, image, points_obtained, points_available, no_of_games_played, correct_answers, wrong_answers, ceil(average) as average , (points_obtained/points_available) * 100 as success_rate
+                     FROM
+                         (
+                         SELECT user.id as user_id, user.username, user.image, COALESCE (points_obtained, 0) AS points_obtained, COALESCE (points_available, 0) AS points_available,
+                         COALESCE (no_of_games_played, 0) AS no_of_games_played,
+                         COALESCE (correct_answers, 0) AS correct_answers,
+                         COALESCE (wrong_answers, 0) AS wrong_answers,
+                         (points_obtained/no_of_games_played) as average
+                         FROM user
+                         INNER JOIN
+                         (SELECT game.userId as user_id, user.username, user.image, SUM ((CASE WHEN gq.correct is True THEN qt.points ELSE 0 END)) as points_obtained
+                         FROM game_question gq
+                         INNER JOIN game ON gq.gameId = game.id
+                         INNER JOIN question ON gq.questionId = question.id
+                         INNER JOIN question_type qt ON question.questionTypeId = qt.id
+                         INNER JOIN user ON game.userId = user.id
+                         WHERE game.submittedAt IS NOT NULL
+                         GROUP BY user_id
+                         ORDER BY points_obtained desc) game_points ON game_points.user_id = user.id
+                         LEFT JOIN (
+                         SELECT userId, COUNT (*) AS no_of_games_played
+                         FROM game
+                         WHERE game.submittedAt IS NOT NULL
+                         GROUP BY userId) no_of_games_played ON no_of_games_played.userId = user.id
+                         LEFT JOIN (
+                         SELECT userId, COUNT (*) AS correct_answers
+                         FROM game_question gq
+                         INNER JOIN game ON gq.gameId = game.id
+                         WHERE game.submittedAt IS NOT NULL AND gq.correct is True
+                         GROUP BY userId) correct_answers ON correct_answers.userId = user.id
+                         LEFT JOIN (
+                         SELECT userId, COUNT (*) AS wrong_answers
+                         FROM game_question gq
+                         INNER JOIN game ON gq.gameId = game.id
+                         WHERE game.submittedAt IS NOT NULL AND gq.correct is False
+                         GROUP BY userId) wrong_answers ON wrong_answers.userId = user.id
+                         LEFT JOIN (
+                         SELECT userId, SUM (game.pointsAvailable) as points_available
+                         FROM game
+                         WHERE game.submittedAt IS NOT NULL
+                         GROUP BY userId) points_available ON points_available.userId = user.id
+                         ORDER BY points_obtained desc, no_of_games_played desc
+                         ) as f, (SELECT @rank := 0) m) as h
+            WHERE h.user_id = ${user.id}`;
 
         if (userRank.length > 0) {
             let user_rank = userRank[0]
@@ -375,9 +401,9 @@ exports.profile_image = async function (req, res) {
         const user = await prisma.user.update({where: {id: parseInt(id)}, data: {image: url}})
 
         res.status(200).json(user);
-    } catch (e) {
-        logger.error(e);
-        res.status(500).json({success: false, message: e.message})
+    } catch (error) {
+        logger.error(error);
+        res.status(500).json(error);
     }
 };
 
@@ -391,11 +417,16 @@ exports.shipping_info = async function (req, res) {
         //Make sure the passed id is that of the logged in user
         if (user_id.toString() !== id.toString()) return res.status(401).json({error: {message: "Sorry, you don't have the permission to update this data."}});
 
-        const shippingInfo = await prisma.shippingInfo.update({where: {userId: parseInt(id)}, data})
+        const shippingInfo = await prisma.shippingInfo.upsert({
+            where: {userId: parseInt(id)},
+            update: data,
+            create: {...data, userId: user_id},
+        })
+
         res.status(200).json(shippingInfo);
-    } catch (e) {
-        logger.error(e);
-        res.status(500).json({success: false, message: e.message})
+    } catch (error) {
+        console.log(error);
+        res.status(500).json(error);
     }
 };
 
@@ -425,4 +456,5 @@ const upload_image = async function (req) {
 exports.get_user_stats = get_user_stats;
 exports.get_user_games_stats = get_user_games_stats;
 exports.get_user_rank = get_user_rank;
+exports.get_user = get_user;
 

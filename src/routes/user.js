@@ -1,4 +1,5 @@
 const express = require('express');
+const {check} = require("express-validator");
 
 const User = require('../controllers/user');
 const validate = require('../middlewares/validate');
@@ -50,7 +51,11 @@ router.put('/:id', User.update);
 
 router.put('/:id/upload', upload.single("image"), User.profile_image)
 
-router.put('/:id/shipping', User.shipping_info)
+router.post('/:id/shipping', [
+    check('fullName').not().isEmpty().withMessage('Full Name is required'),
+    check('addressLineOne').not().isEmpty().withMessage('Address is required'),
+    check('county').not().isEmpty().withMessage('County is required'),
+], validate, User.shipping_info);
 
 
 module.exports = router;

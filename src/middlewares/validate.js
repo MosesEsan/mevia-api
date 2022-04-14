@@ -10,8 +10,7 @@ module.exports = (req, res, next) => {
             error[err.param] = err.msg;
             message = message + err.msg;
         });
-
-        return res.status(400).json({ message, errors: error });
+        return res.status(400).json({ message });
     }
 
     next();

@@ -61,10 +61,6 @@ exports.index = async (req, res) => {
             formatted.push()
         })
 
-        console.log("Return")
-        console.log(rewards[1]["brands"][0]["rewards"])
-        console.log("Return")
-
         res.set('Access-Control-Expose-Headers', 'X-Total-Count')
         res.set('X-Total-Count', rewards.length)
         res.status(200).json(rewards)

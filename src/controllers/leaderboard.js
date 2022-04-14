@@ -39,10 +39,6 @@ async function getLeaderboard(limit, type=null) {
                 title = titles[i]
                 let response = await runQuery(type, limit)
 
-
-                console.log("Type", selected_type)
-                console.log("response", response)
-
                 if (response.length > 0) {
                     leaderboard = response;
                     break;
